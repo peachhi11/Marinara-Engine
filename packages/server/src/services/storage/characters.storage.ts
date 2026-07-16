@@ -8,11 +8,19 @@ import {
   characterCardVersions,
   personas,
   personaCardVersions,
+  personaCharacterLinks,
   characterGroups,
   personaGroups,
 } from "../../db/schema/index.js";
 import { newId, now } from "../../utils/id-generator.js";
-import { PROFESSOR_MARI_ID, type CharacterData, type PersonaCardSnapshot } from "@marinara-engine/shared";
+import {
+  PROFESSOR_MARI_ID,
+  type CharacterData,
+  type PersonaCardSnapshot,
+  type PersonaCharacterLink,
+  type PersonaCharacterLinkRole,
+  type PersonaLinkedCharacterSummary,
+} from "@marinara-engine/shared";
 import { normalizeTimestampOverrides, type TimestampOverrides } from "../import/import-timestamps.js";
 import { toPaginatedList } from "../../utils/list-pagination.js";
 
@@ -74,6 +82,11 @@ type CharacterListRow = {
   favorite: boolean;
 };
 type PersonaRow = typeof personas.$inferSelect;
+type PersonaCharacterLinkRow = typeof personaCharacterLinks.$inferSelect;
+type PersonaCharacterLinkInput = {
+  characterId?: string | null;
+  role?: PersonaCharacterLinkRole | null;
+};
 type CharacterListPageOptions = {
   includeBuiltIn?: boolean;
   limit: number;
@@ -175,7 +188,112 @@ function getCharacterSummaryFromRow(row: typeof characters.$inferSelect) {
   }
 }
 
-function buildPersonaSnapshot(persona: PersonaRow): PersonaCardSnapshot {
+function getLinkedCharacterSummaryFromRow(row: typeof characters.$inferSelect): PersonaLinkedCharacterSummary {
+  const summary = getCharacterSummaryFromRow(row);
+  return {
+    id: summary.id,
+    name: summary.name,
+    avatarPath: summary.avatarUrl,
+    avatarCrop: summary.avatarCrop,
+    conversationStatus: summary.conversationStatus,
+  };
+}
+
+function normalizePersonaCharacterLinkRole(value: string | null | undefined): PersonaCharacterLinkRole {
+  return value === "primary" ? "primary" : "secondary";
+}
+
+function parsePersonaCharacterLinksSnapshot(raw: string | null | undefined): PersonaCharacterLinkInput[] {
+  if (!raw?.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object" && !Array.isArray(entry))
+      .map((entry) => ({
+        characterId: typeof entry.characterId === "string" ? entry.characterId : null,
+        role: typeof entry.role === "string" ? normalizePersonaCharacterLinkRole(entry.role) : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function normalizePersonaCharacterLinks(
+  links: PersonaCharacterLinkInput[] | null | undefined,
+  fallbackPrimaryCharacterId?: string | null,
+): Array<{ characterId: string; role: PersonaCharacterLinkRole }> {
+  const normalized: Array<{ characterId: string; role: PersonaCharacterLinkRole }> = [];
+  const seen = new Set<string>();
+
+  for (const link of links ?? []) {
+    const characterId = typeof link.characterId === "string" ? link.characterId.trim() : "";
+    if (!characterId || seen.has(characterId)) continue;
+    seen.add(characterId);
+    normalized.push({
+      characterId,
+      role: normalizePersonaCharacterLinkRole(link.role),
+    });
+  }
+
+  const fallbackPrimary = typeof fallbackPrimaryCharacterId === "string" ? fallbackPrimaryCharacterId.trim() : "";
+  if (fallbackPrimary) {
+    const existingPrimary = normalized.find((link) => link.characterId === fallbackPrimary);
+    if (existingPrimary) {
+      existingPrimary.role = "primary";
+    } else {
+      normalized.unshift({ characterId: fallbackPrimary, role: "primary" });
+    }
+  }
+
+  let foundPrimary = false;
+  for (const link of normalized) {
+    if (link.role !== "primary") continue;
+    if (!foundPrimary) {
+      foundPrimary = true;
+      continue;
+    }
+    link.role = "secondary";
+  }
+
+  return normalized;
+}
+
+function getPrimaryPersonaCharacterId(
+  links: Array<{ characterId: string; role: PersonaCharacterLinkRole }> | PersonaCharacterLink[] | null | undefined,
+) {
+  return links?.find((link) => link.role === "primary")?.characterId ?? "";
+}
+
+function serializePersonaCharacterLinksSnapshot(
+  links: Array<{ characterId: string; role: PersonaCharacterLinkRole }> | PersonaCharacterLink[] | null | undefined,
+) {
+  return JSON.stringify((links ?? []).map((link) => ({ characterId: link.characterId, role: link.role })));
+}
+
+async function replacePersonaCharacterLinks(
+  tx: Pick<DB, "delete" | "insert">,
+  personaId: string,
+  links: Array<{ characterId: string; role: PersonaCharacterLinkRole }>,
+  timestamp: string,
+) {
+  await tx.delete(personaCharacterLinks).where(eq(personaCharacterLinks.personaId, personaId));
+  if (links.length === 0) return;
+  await tx.insert(personaCharacterLinks).values(
+    links.map((link) => ({
+      id: newId(),
+      personaId,
+      characterId: link.characterId,
+      role: link.role,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    })),
+  );
+}
+
+function buildPersonaSnapshot(
+  persona: PersonaRow & { linkedCharacterId?: string | null; characterLinks?: PersonaCharacterLink[] | null },
+): PersonaCardSnapshot {
   return {
     name: persona.name ?? "",
     creator: persona.creator ?? "",
@@ -198,6 +316,8 @@ function buildPersonaSnapshot(persona: PersonaRow): PersonaCardSnapshot {
     convoDisplayName: persona.convoDisplayName ?? "",
     aboutMe: persona.aboutMe ?? "",
     convoBehavior: persona.convoBehavior ?? "",
+    linkedCharacterId: persona.linkedCharacterId ?? getPrimaryPersonaCharacterId(persona.characterLinks),
+    characterLinks: serializePersonaCharacterLinksSnapshot(persona.characterLinks),
   };
 }
 
@@ -213,6 +333,10 @@ function mergePersonaSnapshot(
 }
 
 function normalizePersonaSnapshot(data: PersonaCardSnapshot): PersonaCardSnapshot {
+  const normalizedLinks = normalizePersonaCharacterLinks(
+    parsePersonaCharacterLinksSnapshot(data.characterLinks),
+    data.linkedCharacterId ?? "",
+  );
   return {
     name: data.name ?? "",
     creator: data.creator ?? "",
@@ -235,7 +359,72 @@ function normalizePersonaSnapshot(data: PersonaCardSnapshot): PersonaCardSnapsho
     convoDisplayName: data.convoDisplayName ?? "",
     aboutMe: data.aboutMe ?? "",
     convoBehavior: data.convoBehavior ?? "",
+    linkedCharacterId: getPrimaryPersonaCharacterId(normalizedLinks),
+    characterLinks: serializePersonaCharacterLinksSnapshot(normalizedLinks),
   };
+}
+
+async function loadPersonaCharacterLinks(
+  db: DB,
+  personaIds: string[],
+): Promise<Map<string, PersonaCharacterLinkRow[]>> {
+  const uniqueIds = Array.from(new Set(personaIds.filter((id) => id.trim().length > 0)));
+  const byPersonaId = new Map<string, PersonaCharacterLinkRow[]>();
+  if (uniqueIds.length === 0) return byPersonaId;
+  const rows = await db
+    .select()
+    .from(personaCharacterLinks)
+    .where(inArray(personaCharacterLinks.personaId, uniqueIds))
+    .orderBy(asc(personaCharacterLinks.createdAt), asc(personaCharacterLinks.id));
+  for (const row of rows) {
+    const list = byPersonaId.get(row.personaId) ?? [];
+    list.push(row);
+    byPersonaId.set(row.personaId, list);
+  }
+  return byPersonaId;
+}
+
+async function loadCharacterSummaryMap(
+  db: DB,
+  characterIds: string[],
+): Promise<Map<string, PersonaLinkedCharacterSummary>> {
+  const uniqueIds = Array.from(new Set(characterIds.filter((id) => id.trim().length > 0)));
+  const result = new Map<string, PersonaLinkedCharacterSummary>();
+  if (uniqueIds.length === 0) return result;
+  const rows = await db.select().from(characters).where(inArray(characters.id, uniqueIds));
+  for (const row of rows) {
+    result.set(row.id, getLinkedCharacterSummaryFromRow(row));
+  }
+  return result;
+}
+
+function enrichPersonaRows(
+  rows: PersonaRow[],
+  linksByPersonaId: Map<string, PersonaCharacterLinkRow[]>,
+  charactersById: Map<string, PersonaLinkedCharacterSummary>,
+) {
+  return rows.map((row) => {
+    const rawLinks = linksByPersonaId.get(row.id) ?? [];
+    const characterLinks: PersonaCharacterLink[] = rawLinks
+      .map((link) => ({
+        ...link,
+        role: normalizePersonaCharacterLinkRole(link.role),
+        character: charactersById.get(link.characterId) ?? null,
+      }))
+      .sort((a, b) => {
+        if (a.role !== b.role) return a.role === "primary" ? -1 : 1;
+        const aName = a.character?.name?.trim() || a.characterId;
+        const bName = b.character?.name?.trim() || b.characterId;
+        return aName.localeCompare(bName) || a.characterId.localeCompare(b.characterId);
+      });
+    const primaryLink = characterLinks.find((link) => link.role === "primary") ?? null;
+    return {
+      ...row,
+      linkedCharacterId: primaryLink?.characterId ?? null,
+      linkedCharacter: primaryLink?.character ?? null,
+      characterLinks,
+    };
+  });
 }
 
 export function createCharactersStorage(db: DB) {
@@ -509,7 +698,16 @@ export function createCharactersStorage(db: DB) {
     // ── Personas ──
 
     async listPersonas() {
-      return db.select().from(personas).orderBy(desc(personas.updatedAt));
+      const rows = await db.select().from(personas).orderBy(desc(personas.updatedAt));
+      const linksByPersonaId = await loadPersonaCharacterLinks(
+        db,
+        rows.map((row) => row.id),
+      );
+      const charactersById = await loadCharacterSummaryMap(
+        db,
+        Array.from(new Set(rows.flatMap((row) => (linksByPersonaId.get(row.id) ?? []).map((link) => link.characterId)))),
+      );
+      return enrichPersonaRows(rows, linksByPersonaId, charactersById);
     },
 
     async listPersonasPage(options: PersonaListPageOptions) {
@@ -541,12 +739,27 @@ export function createCharactersStorage(db: DB) {
             .orderBy(...personaOrder(options.sort))
             .limit(options.limit + 1)
             .offset(options.offset));
-      return toPaginatedList(rows, options.limit, options.offset);
+      const linksByPersonaId = await loadPersonaCharacterLinks(
+        db,
+        rows.map((row) => row.id),
+      );
+      const charactersById = await loadCharacterSummaryMap(
+        db,
+        Array.from(new Set(rows.flatMap((row) => (linksByPersonaId.get(row.id) ?? []).map((link) => link.characterId)))),
+      );
+      return toPaginatedList(enrichPersonaRows(rows, linksByPersonaId, charactersById), options.limit, options.offset);
     },
 
     async getPersona(id: string) {
       const rows = await db.select().from(personas).where(eq(personas.id, id));
-      return rows[0] ?? null;
+      const row = rows[0];
+      if (!row) return null;
+      const linksByPersonaId = await loadPersonaCharacterLinks(db, [row.id]);
+      const charactersById = await loadCharacterSummaryMap(
+        db,
+        (linksByPersonaId.get(row.id) ?? []).map((link) => link.characterId),
+      );
+      return enrichPersonaRows([row], linksByPersonaId, charactersById)[0] ?? null;
     },
 
     async listPersonaVersions(personaId: string) {
@@ -623,39 +836,45 @@ export function createCharactersStorage(db: DB) {
         aboutMe?: string;
         convoBehavior?: string;
         avatarCrop?: string;
+        linkedCharacterId?: string | null;
+        characterLinks?: PersonaCharacterLinkInput[] | null;
       },
       timestampOverrides?: TimestampOverrides | null,
     ) {
       const id = newId();
       const timestamp = resolveTimestamps(timestampOverrides);
-      await db.insert(personas).values({
-        id,
-        name,
-        comment: extra?.comment ?? "",
-        creator: extra?.creator ?? "",
-        personaVersion: extra?.personaVersion?.trim() ? extra.personaVersion : "1.0",
-        creatorNotes: extra?.creatorNotes ?? "",
-        phoneticName: extra?.phoneticName ?? "",
-        description,
-        personality: extra?.personality ?? "",
-        scenario: extra?.scenario ?? "",
-        backstory: extra?.backstory ?? "",
-        appearance: extra?.appearance ?? "",
-        avatarPath: avatarPath ?? null,
-        avatarCrop: extra?.avatarCrop ?? "",
-        isActive: "false",
-        nameColor: extra?.nameColor ?? "",
-        dialogueColor: extra?.dialogueColor ?? "",
-        boxColor: extra?.boxColor ?? "",
-        trackerCardColors: extra?.trackerCardColors ?? '{"mode":"chat"}',
-        personaStats: extra?.personaStats ?? "",
-        tags: extra?.tags ?? "[]",
-        savedStatusOptions: extra?.savedStatusOptions ?? "[]",
-        convoDisplayName: extra?.convoDisplayName ?? "",
-        aboutMe: extra?.aboutMe ?? "",
-        convoBehavior: extra?.convoBehavior ?? "",
-        createdAt: timestamp.createdAt,
-        updatedAt: timestamp.updatedAt,
+      const normalizedLinks = normalizePersonaCharacterLinks(extra?.characterLinks, extra?.linkedCharacterId);
+      await db.transaction(async (tx) => {
+        await tx.insert(personas).values({
+          id,
+          name,
+          comment: extra?.comment ?? "",
+          creator: extra?.creator ?? "",
+          personaVersion: extra?.personaVersion?.trim() ? extra.personaVersion : "1.0",
+          creatorNotes: extra?.creatorNotes ?? "",
+          phoneticName: extra?.phoneticName ?? "",
+          description,
+          personality: extra?.personality ?? "",
+          scenario: extra?.scenario ?? "",
+          backstory: extra?.backstory ?? "",
+          appearance: extra?.appearance ?? "",
+          avatarPath: avatarPath ?? null,
+          avatarCrop: extra?.avatarCrop ?? "",
+          isActive: "false",
+          nameColor: extra?.nameColor ?? "",
+          dialogueColor: extra?.dialogueColor ?? "",
+          boxColor: extra?.boxColor ?? "",
+          trackerCardColors: extra?.trackerCardColors ?? '{"mode":"chat"}',
+          personaStats: extra?.personaStats ?? "",
+          tags: extra?.tags ?? "[]",
+          savedStatusOptions: extra?.savedStatusOptions ?? "[]",
+          convoDisplayName: extra?.convoDisplayName ?? "",
+          aboutMe: extra?.aboutMe ?? "",
+          convoBehavior: extra?.convoBehavior ?? "",
+          createdAt: timestamp.createdAt,
+          updatedAt: timestamp.updatedAt,
+        });
+        await replacePersonaCharacterLinks(tx, id, normalizedLinks, timestamp.createdAt);
       });
       return this.getPersona(id);
     },
@@ -695,34 +914,39 @@ export function createCharactersStorage(db: DB) {
       if (!source) return null;
       const newPId = newId();
       const timestamp = now();
-      await db.insert(personas).values({
-        id: newPId,
-        name: `${source.name || "Persona"} (Copy)`,
-        comment: source.comment ?? "",
-        creator: source.creator ?? "",
-        personaVersion: source.personaVersion?.trim() ? source.personaVersion : "1.0",
-        creatorNotes: source.creatorNotes ?? "",
-        phoneticName: source.phoneticName ?? "",
-        description: source.description ?? "",
-        personality: source.personality ?? "",
-        scenario: source.scenario ?? "",
-        backstory: source.backstory ?? "",
-        appearance: source.appearance ?? "",
-        avatarPath: source.avatarPath,
-        avatarCrop: source.avatarCrop ?? "",
-        isActive: "false",
-        nameColor: source.nameColor ?? "",
-        dialogueColor: source.dialogueColor ?? "",
-        boxColor: source.boxColor ?? "",
-        trackerCardColors: source.trackerCardColors ?? '{"mode":"chat"}',
-        personaStats: source.personaStats ?? "",
-        tags: source.tags ?? "[]",
-        savedStatusOptions: source.savedStatusOptions ?? "[]",
-        convoDisplayName: source.convoDisplayName ?? "",
-        aboutMe: source.aboutMe ?? "",
-        convoBehavior: source.convoBehavior ?? "",
-        createdAt: timestamp,
-        updatedAt: timestamp,
+      await db.transaction(async (tx) => {
+        await tx.insert(personas).values({
+          id: newPId,
+          name: `${source.name || "Persona"} (Copy)`,
+          comment: source.comment ?? "",
+          creator: source.creator ?? "",
+          personaVersion: source.personaVersion?.trim() ? source.personaVersion : "1.0",
+          creatorNotes: source.creatorNotes ?? "",
+          phoneticName: source.phoneticName ?? "",
+          description: source.description ?? "",
+          personality: source.personality ?? "",
+          scenario: source.scenario ?? "",
+          backstory: source.backstory ?? "",
+          appearance: source.appearance ?? "",
+          avatarPath: source.avatarPath,
+          avatarCrop: source.avatarCrop ?? "",
+          isActive: "false",
+          nameColor: source.nameColor ?? "",
+          dialogueColor: source.dialogueColor ?? "",
+          boxColor: source.boxColor ?? "",
+          trackerCardColors: source.trackerCardColors ?? '{"mode":"chat"}',
+          personaStats: source.personaStats ?? "",
+          tags: source.tags ?? "[]",
+          savedStatusOptions: source.savedStatusOptions ?? "[]",
+          convoDisplayName: source.convoDisplayName ?? "",
+          aboutMe: source.aboutMe ?? "",
+          convoBehavior: source.convoBehavior ?? "",
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        const linkedCharacterId = source.linkedCharacterId?.trim();
+        const normalizedLinks = normalizePersonaCharacterLinks(source.characterLinks, linkedCharacterId);
+        await replacePersonaCharacterLinks(tx, newPId, normalizedLinks, timestamp);
       });
       return this.getPersona(newPId);
     },
@@ -753,6 +977,8 @@ export function createCharactersStorage(db: DB) {
         convoDisplayName?: string;
         aboutMe?: string;
         convoBehavior?: string;
+        linkedCharacterId?: string | null;
+        characterLinks?: PersonaCharacterLinkInput[] | null;
       },
       options?: {
         versionSource?: string | null;
@@ -763,6 +989,10 @@ export function createCharactersStorage(db: DB) {
       const existing = await this.getPersona(id);
       if (!existing) return null;
       const currentData = buildPersonaSnapshot(existing);
+      const normalizedLinks =
+        updates.characterLinks !== undefined || updates.linkedCharacterId !== undefined
+          ? normalizePersonaCharacterLinks(updates.characterLinks, updates.linkedCharacterId)
+          : null;
       const nextData = mergePersonaSnapshot(currentData, {
         ...(updates.name !== undefined && { name: updates.name }),
         ...(updates.creator !== undefined && { creator: updates.creator }),
@@ -785,6 +1015,10 @@ export function createCharactersStorage(db: DB) {
         ...(updates.convoDisplayName !== undefined && { convoDisplayName: updates.convoDisplayName }),
         ...(updates.aboutMe !== undefined && { aboutMe: updates.aboutMe }),
         ...(updates.convoBehavior !== undefined && { convoBehavior: updates.convoBehavior }),
+        ...(normalizedLinks !== null && {
+          linkedCharacterId: getPrimaryPersonaCharacterId(normalizedLinks),
+          characterLinks: serializePersonaCharacterLinksSnapshot(normalizedLinks),
+        }),
       });
       const nextComment = updates.comment !== undefined ? updates.comment : (existing.comment ?? "");
       const nextAvatarPath = updates.avatarPath !== undefined ? updates.avatarPath : existing.avatarPath;
@@ -823,7 +1057,13 @@ export function createCharactersStorage(db: DB) {
       if (updates.convoDisplayName !== undefined) sets.convoDisplayName = updates.convoDisplayName;
       if (updates.aboutMe !== undefined) sets.aboutMe = updates.aboutMe;
       if (updates.convoBehavior !== undefined) sets.convoBehavior = updates.convoBehavior;
-      await db.update(personas).set(sets).where(eq(personas.id, id));
+      await db.transaction(async (tx) => {
+        await tx.update(personas).set(sets).where(eq(personas.id, id));
+        if (normalizedLinks !== null) {
+          const timestamp = now();
+          await replacePersonaCharacterLinks(tx, id, normalizedLinks, timestamp);
+        }
+      });
       return this.getPersona(id);
     },
 
@@ -833,35 +1073,42 @@ export function createCharactersStorage(db: DB) {
       const existing = await this.getPersona(personaId);
       if (!existing) return null;
       const data = normalizePersonaSnapshot(version.data);
-      await db
-        .update(personas)
-        .set({
-          name: data.name,
-          comment: version.comment ?? "",
-          creator: data.creator,
-          personaVersion: data.personaVersion,
-          creatorNotes: data.creatorNotes,
-          phoneticName: data.phoneticName ?? "",
-          description: data.description,
-          personality: data.personality,
-          scenario: data.scenario,
-          backstory: data.backstory,
-          appearance: data.appearance,
-          avatarPath: version.avatarPath ?? null,
-          avatarCrop: data.avatarCrop,
-          nameColor: data.nameColor,
-          dialogueColor: data.dialogueColor,
-          boxColor: data.boxColor,
-          trackerCardColors: data.trackerCardColors,
-          personaStats: data.personaStats,
-          tags: data.tags,
-          savedStatusOptions: data.savedStatusOptions,
-          convoDisplayName: data.convoDisplayName,
-          aboutMe: data.aboutMe,
-          convoBehavior: data.convoBehavior,
-          updatedAt: now(),
-        })
-        .where(eq(personas.id, personaId));
+      const normalizedLinks = normalizePersonaCharacterLinks(
+        parsePersonaCharacterLinksSnapshot(data.characterLinks),
+        data.linkedCharacterId,
+      );
+      await db.transaction(async (tx) => {
+        await tx
+          .update(personas)
+          .set({
+            name: data.name,
+            comment: version.comment ?? "",
+            creator: data.creator,
+            personaVersion: data.personaVersion,
+            creatorNotes: data.creatorNotes,
+            phoneticName: data.phoneticName ?? "",
+            description: data.description,
+            personality: data.personality,
+            scenario: data.scenario,
+            backstory: data.backstory,
+            appearance: data.appearance,
+            avatarPath: version.avatarPath ?? null,
+            avatarCrop: data.avatarCrop,
+            nameColor: data.nameColor,
+            dialogueColor: data.dialogueColor,
+            boxColor: data.boxColor,
+            trackerCardColors: data.trackerCardColors,
+            personaStats: data.personaStats,
+            tags: data.tags,
+            savedStatusOptions: data.savedStatusOptions,
+            convoDisplayName: data.convoDisplayName,
+            aboutMe: data.aboutMe,
+            convoBehavior: data.convoBehavior,
+            updatedAt: now(),
+          })
+          .where(eq(personas.id, personaId));
+        await replacePersonaCharacterLinks(tx, personaId, normalizedLinks, now());
+      });
       return this.getPersona(personaId);
     },
 

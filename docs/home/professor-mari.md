@@ -20,6 +20,7 @@ Ask her for help with any of these:
 
 - Explaining a setting, a mode, or a concept before you change anything.
 - Creating or editing a character. A character is a card that gives the AI a name, personality, and voice.
+  Professor Mari now follows a HumanOS-aware card structure: identity, personality, story role, backstory, appearance, relationships, and speech style are kept separate so the result stays readable instead of collapsing into one blended paragraph.
 - Creating or editing a persona. A persona is the identity you play as in a chat, the "you" in the story.
 - Creating or editing a lorebook. A lorebook is a set of world notes the AI pulls in when they are relevant.
 - Creating or editing a theme, an agent, or a prompt preset. A theme is a look for the app. An agent is a background AI helper. A preset is a saved bundle of prompt settings.

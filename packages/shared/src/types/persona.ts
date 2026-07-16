@@ -3,12 +3,38 @@
 // ──────────────────────────────────────────────
 import type { ConvoBehaviorConfig } from "./character.js";
 
+export interface PersonaLinkedCharacterSummary {
+  id: string;
+  name: string;
+  avatarPath: string | null;
+  avatarCrop?: unknown;
+  conversationStatus?: string;
+}
+
+export type PersonaCharacterLinkRole = "primary" | "secondary";
+
+export interface PersonaCharacterLink {
+  id: string;
+  personaId: string;
+  characterId: string;
+  role: PersonaCharacterLinkRole;
+  createdAt: string;
+  updatedAt: string;
+  character?: PersonaLinkedCharacterSummary | null;
+}
+
 /** A user persona (the player's character/identity). */
 export interface Persona {
   id: string;
   name: string;
   /** Short comment shown under the name (for disambiguation) */
   comment: string;
+  /** Optional creator credit shown in the editor/library. */
+  creator?: string;
+  /** Persona schema/version label used by the editor history surface. */
+  personaVersion?: string;
+  /** Private author notes for the persona definition. */
+  creatorNotes?: string;
   /** Optional pronunciation override used when this persona name is sent to TTS. */
   phoneticName?: string;
   description: string;
@@ -44,6 +70,12 @@ export interface Persona {
   aboutMe?: string;
   /** Conversation mode ONLY: behavior directive + insertion strategy for the persona. */
   convoBehavior?: ConvoBehaviorConfig;
+  /** Persisted primary character pairing used by HumanOS editor/runtime surfaces. */
+  linkedCharacterId?: string | null;
+  /** Linked character details for the persisted primary pairing. */
+  linkedCharacter?: PersonaLinkedCharacterSummary | null;
+  /** Full persisted character link set for this persona. */
+  characterLinks?: PersonaCharacterLink[];
   createdAt: string;
   updatedAt: string;
 }

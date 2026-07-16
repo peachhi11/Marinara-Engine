@@ -20,6 +20,7 @@ import {
 import {
   PROFESSOR_MARI_ID,
   type AboutMeSourceConfig,
+  type PersonaCharacterLinkRole,
   type CharacterCardVersion,
   type Persona,
   type PersonaCardVersion,
@@ -1020,6 +1021,8 @@ export function useCreatePersona() {
       aboutMe?: string;
       convoBehavior?: string;
       avatarCrop?: string;
+      linkedCharacterId?: string | null;
+      characterLinks?: Array<{ characterId?: string | null; role?: PersonaCharacterLinkRole | null }> | null;
     }) => api.post("/characters/personas", data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: characterKeys.personas });
@@ -1062,6 +1065,8 @@ export function useUpdatePersona() {
       aboutMe?: string;
       convoBehavior?: string;
       avatarCrop?: string;
+      linkedCharacterId?: string | null;
+      characterLinks?: Array<{ characterId?: string | null; role?: PersonaCharacterLinkRole | null }> | null;
     }) => api.patch(`/characters/personas/${id}`, data, keepalive ? { keepalive: true } : undefined),
     onSuccess: (updatedPersona, variables) => {
       const updatedId = (updatedPersona as { id?: string } | null)?.id ?? variables.id;

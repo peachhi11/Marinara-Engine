@@ -31,6 +31,7 @@ const TEST_GLOBS = [
   "src/services/llm/providers/claude-subscription/__tests__/*.test.ts",
   "src/services/generation/__tests__/humanos-*.test.ts",
   "src/services/generation/__tests__/message-publication-storage.test.ts",
+  "src/services/generation/__tests__/persona-character-links-storage.test.ts",
   "src/services/generation/__tests__/post-canonical-tracking.test.ts",
 ].filter((pattern) => existsSync(dirname(pattern)));
 

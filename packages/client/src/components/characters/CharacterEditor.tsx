@@ -89,6 +89,7 @@ import {
   RotateCcw,
   Scissors,
   MessageCircle,
+  Activity,
 } from "lucide-react";
 import { cn, generateClientId, getAvatarCropStyle, type AvatarCrop, type LegacyAvatarCrop } from "../../lib/utils";
 import { extractColorsFromImage } from "../../lib/avatar-color-extraction";
@@ -119,6 +120,7 @@ import {
 import { parseTrackerCardColorConfig, serializeTrackerCardColorConfig } from "../../lib/tracker-card-colors";
 import { useQuoteFormatter } from "../../hooks/use-quote-formatter";
 import { LorebookAssignmentSection } from "../lorebooks/LorebookAssignmentSection";
+import { NarrativeGeneratorTab } from "../humanos/NarrativeGeneratorTab";
 
 // ── Tabs ──
 const TABS = [
@@ -131,6 +133,7 @@ const TABS = [
   { id: "colors", label: "Colors", icon: Palette },
   { id: "stats", label: "Stats", icon: Swords },
   { id: "advanced", label: "Advanced", icon: Settings2 },
+  { id: "runtime", label: "Runtime", icon: Activity },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -300,6 +303,16 @@ export function CharacterEditor() {
   const imageGenerationAvailable =
     Array.isArray(connectionsList) &&
     (connectionsList as Array<{ provider?: string }>).some((connection) => connection.provider === "image_generation");
+  const importMetadata =
+    formData?.extensions.importMetadata && typeof formData.extensions.importMetadata === "object"
+      ? (formData.extensions.importMetadata as Record<string, unknown>)
+      : null;
+  const embeddedLorebookMetadata =
+    importMetadata?.embeddedLorebook && typeof importMetadata.embeddedLorebook === "object"
+      ? (importMetadata.embeddedLorebook as Record<string, unknown>)
+      : null;
+  const runtimeLorebookId =
+    typeof embeddedLorebookMetadata?.lorebookId === "string" ? embeddedLorebookMetadata.lorebookId : null;
 
   useEffect(() => {
     activeCharacterIdRef.current = characterId;
@@ -1060,6 +1073,18 @@ export function CharacterEditor() {
                 updateField={updateField}
                 updateExtension={updateExtension}
                 characterId={characterId}
+              />
+            )}
+            {activeTab === "runtime" && (
+              <NarrativeGeneratorTab
+                mode="character"
+                locked={false}
+                subjectId={characterId ?? null}
+                subjectName={formData?.name ?? null}
+                subjectDescription={formData?.description ?? null}
+                subjectPersonality={formData?.personality ?? null}
+                subjectScenario={formData?.scenario ?? null}
+                targetLorebookId={runtimeLorebookId}
               />
             )}
             {activeTab === "sprites" && characterId && (

@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────
 // Schema: Characters, Personas & Character Groups
 // ──────────────────────────────────────────────
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const characters = sqliteTable("characters", {
   id: text("id").primaryKey(),
@@ -96,6 +96,26 @@ export const personaCardVersions = sqliteTable("persona_card_versions", {
   reason: text("reason").notNull().default(""),
   createdAt: text("created_at").notNull(),
 });
+
+export const personaCharacterLinks = sqliteTable(
+  "persona_character_links",
+  {
+    id: text("id").primaryKey(),
+    personaId: text("persona_id")
+      .notNull()
+      .references(() => personas.id, { onDelete: "cascade" }),
+    characterId: text("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    /** One optional primary runtime pairing plus any number of secondary relationships. */
+    role: text("role", { enum: ["primary", "secondary"] }).notNull().default("primary"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_persona_character_links_persona_character").on(table.personaId, table.characterId),
+  ],
+);
 
 export const characterGroups = sqliteTable("character_groups", {
   id: text("id").primaryKey(),

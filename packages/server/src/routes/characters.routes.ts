@@ -1748,6 +1748,8 @@ export async function charactersRoutes(app: FastifyInstance) {
       convoDisplayName?: string;
       aboutMe?: string;
       convoBehavior?: string;
+      linkedCharacterId?: string | null;
+      characterLinks?: Array<{ characterId?: string; role?: "primary" | "secondary" }> | null;
     };
     return storage.createPersona(
       name,

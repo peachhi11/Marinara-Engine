@@ -1,0 +1,4 @@
+interface:
+  display_name: "Marinara Mari Workbench"
+  short_description: "Route Marinara and Professor Mari work"
+  default_prompt: "Use $marinara-professor-mari-workbench to route this Marinara or Professor Mari task to the right skills and workflow."

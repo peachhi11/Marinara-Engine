@@ -394,6 +394,20 @@ Workspace defaults:
 - For structured app-data writes the user requested, use \`apply:true\` so Marinara can save the change and show the user an in-chat Keep/Restore review card when the change is reversible. Use \`apply:false\` only when the user explicitly asks for a preview/dry run or when you are inspecting a risky change before deciding what to do.
 - Keep user-facing replies concise and human-readable.
 - For persona creation, interview the user briefly only when missing details would likely create the wrong identity. If the user says to decide the details, create the persona directly. Do not require a preview/approval loop for a new persona.
+- For character and persona creation, prefer the HumanOS card structure:
+  - Identity
+  - Personality
+  - Story Role / Scenario
+  - Backstory
+  - Appearance
+  - Relationships
+  - Speech Style
+  - Optional Notes
+  Keep durable character truth separate from story binding and runtime state. If a fact is unknown, leave it unknown instead of inventing it. Expand only what is supported by the source or user prompt.
+- For runtime work, generate a narrative arc overview rather than a raw dump of state. The runtime deliverable should be a compact one-page projection of the current story course broken into five stages: Setup, Escalation, Complication, Turning Point, and Resolution / Transition.
+- On the character page, runtime generation should seed the arc from the built character plus any current scenario context and can draft first-message and alternate-opening variants plus lorebook hooks.
+- On the persona page, runtime generation should stay locked until a character is selected. Once a character is linked, blend the character truth, persona truth, current runtime truth, and relationship save into a plausible narrative arc. Allow the user to edit the result manually before pushing it back into runtime or lorebook projections.
+- Treat runtime as mutable present-state truth. Narrative arc output is a projection of runtime, not a replacement for runtime, the relationship save, or the card itself.
 
 Command families:
 - \`app_data\`: no-shell structured actions for characters, personas, lorebooks, lorebook entries, themes, agents, and prompt presets. Prefer this before shell commands for those objects.
@@ -456,6 +470,12 @@ Field rules:
 - Immediately after you successfully create or update something, offer 2-4 follow-up suggestions for a natural next step: link it to something else, refine a field, create a related item, or open it for full editing. Tag each with the relevant entity.
 - Do not mention tapping, clicking, choosing chips, quick replies, buttons, or examples unless \`suggestions\` or \`plan\` is present in the same JSON object. If you want the user to answer in plain chat, ask directly without referring to UI controls.
 - For vague create/edit requests, prefer one \`plan\` instead of interrogating the user turn by turn. Use \`suggestions\` only for simple quick replies or follow-up next steps, not as a hidden substitute for a guided plan.
+- For lorebook audits, existence is not enough. Read \`lorebook.entries\` before judging completeness or quality.
+- If \`lorebook.entries\` returns zero rows, explicitly say the lorebook exists but has zero entries. Do not claim the audit passed, the entries look good, or the entries are usable.
+- If any \`lorebook.entries\` row reports \`contentState: "empty"\` or \`contentState: "placeholder"\`, explicitly flag that entry as unusable in the audit. Do not call the lorebook complete just because the entry row exists.
+- When summarizing a lorebook audit, state the entry count and base your verdict on the actual entry rows you inspected.
+- When choosing a lorebook for a character or persona, treat linked \`characterIds\` / \`personaIds\` and linked owner names as canonical ownership. A mention of another character in the lorebook name, description, or entries does not make that lorebook belong to them.
+- Before updating, auditing, or attaching a lorebook for a named character/persona, verify the owner from the lorebook result itself. If ownership is ambiguous, say so and inspect the exact lorebook id before making changes.
 
 ${MARI_GUIDED_SEQUENCES}
 
@@ -975,8 +995,44 @@ function assistantHistoryContentForAction(
   return JSON.stringify(payload);
 }
 
+const WORKSPACE_PROTOCOL_LEAK_SIGNALS = [
+  "return exactly one json object",
+  "acting in protocol mode",
+  "workspace protocol",
+  "assistant message must begin with",
+  "do not repeat the prose outside json",
+  "put the final user-facing text in say",
+  "include the next commands and set stop to false",
+];
+
+function normalizeWorkspaceProtocolLeakText(content: string): string {
+  return content
+    .replace(/[`"'“”‘’]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isWorkspaceProtocolLeakText(content: string): boolean {
+  const normalized = normalizeWorkspaceProtocolLeakText(content);
+  if (!normalized) return false;
+  return WORKSPACE_PROTOCOL_LEAK_SIGNALS.some((signal) => normalized.includes(signal));
+}
+
+function stripWorkspaceProtocolLeakLines(content: string): string {
+  const sanitized = content
+    .split(/\r?\n/)
+    .filter((line) => !isWorkspaceProtocolLeakText(line))
+    .join("\n")
+    .trim();
+  return sanitized;
+}
+
 function assistantHistoryContentFromVisibleText(content: string): string {
   const trimmed = content.trim();
+  if (isWorkspaceProtocolLeakText(trimmed)) {
+    return assistantHistoryContentForAction({ visibleText: "", commands: [], stop: false });
+  }
   const payload = tryParseJsonPayload(trimmed);
   if (payload && hasActionPayload(payload)) return trimmed;
   return assistantHistoryContentForAction({ visibleText: trimmed, commands: [], stop: true });
@@ -1015,6 +1071,7 @@ function parseAssistantWorkspaceAction(content: string): AssistantWorkspaceActio
     .filter(Boolean)
     .join("\n\n");
   const visibleText = [inlineVisibleText, frameVisibleText].filter(Boolean).join("\n\n").trim();
+  const sanitizedVisibleText = isWorkspaceProtocolLeakText(visibleText) ? "" : visibleText;
   const suggestions = matches.flatMap((match) => sanitizeSuggestionChips(match.payload.suggestions));
   const plan = matches.flatMap((match) => sanitizePlanSteps(match.payload.plan));
   const commands = dedupeWorkspaceCommandCalls([
@@ -1027,13 +1084,19 @@ function parseAssistantWorkspaceAction(content: string): AssistantWorkspaceActio
   const explicitStopValue = explicitStop ? jsonPayloadStopValue(explicitStop.payload) : undefined;
   const stop = explicitStopValue ?? (commands.length === 0 && protocolValid);
   return {
-    visibleText,
+    visibleText: sanitizedVisibleText,
     commands,
     suggestions,
     plan,
     stop,
     protocolValid,
-    assistantHistoryContent: assistantHistoryContentForAction({ visibleText, commands, suggestions, plan, stop }),
+    assistantHistoryContent: assistantHistoryContentForAction({
+      visibleText: sanitizedVisibleText,
+      commands,
+      suggestions,
+      plan,
+      stop,
+    }),
   };
 }
 
@@ -1063,6 +1126,45 @@ function escapeWorkspaceXml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function parseWorkspaceCommandStdoutJson(output: string): unknown | null {
+  const marker = /stdout:\s*([\s\S]+)$/m.exec(output)?.[1]?.trim() ?? "";
+  if (!marker) return null;
+  try {
+    return JSON.parse(marker) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function buildWorkspaceGroundingNotes(results: WorkspaceCommandResult[]): string[] {
+  const notes: string[] = [];
+  for (const result of results) {
+    if (!result.success || result.name !== "app_data" || !isRecord(result.input)) continue;
+    const action = typeof result.input.action === "string" ? result.input.action : "";
+    if (action !== "lorebook.entries") continue;
+    const parsed = parseWorkspaceCommandStdoutJson(result.output);
+    if (!Array.isArray(parsed)) continue;
+    if (parsed.length === 0) {
+      notes.push(
+        "The lorebook.entries read returned zero rows. The lorebook exists but has zero entries. Do not claim the audit passed or that the entries look good.",
+      );
+      continue;
+    }
+    const emptyEntries = parsed.filter(
+      (entry) => isRecord(entry) && (entry.contentState === "empty" || entry.contentState === "placeholder"),
+    );
+    notes.push(
+      `The lorebook.entries read returned ${parsed.length} entr${parsed.length === 1 ? "y" : "ies"}. Base any audit verdict on those entry rows, not just on lorebook existence.`,
+    );
+    if (emptyEntries.length > 0) {
+      notes.push(
+        `${emptyEntries.length} lorebook entr${emptyEntries.length === 1 ? "y is" : "ies are"} flagged with empty or placeholder content. Explicitly mark those entries unusable in the audit, and do not call the lorebook complete unless you explain that defect.`,
+      );
+    }
+  }
+  return notes;
+}
+
 function formatCommandResultForPrompt(results: WorkspaceCommandResult[]): string {
   const blocks = results.map((result) => {
     const input = escapeWorkspaceXml(JSON.stringify(result.input, null, 2));
@@ -1076,7 +1178,12 @@ ${output}
 </output>
 </workspace_command_result>`;
   });
-  return `Marinara executed Professor Mari's hidden workspace command${results.length === 1 ? "" : "s"}. Use these results to decide the next command or final answer.\n\n${blocks.join("\n\n")}`;
+  const groundingNotes = buildWorkspaceGroundingNotes(results);
+  const groundingBlock =
+    groundingNotes.length > 0
+      ? `\n\n<workspace_grounding_notes>\n${groundingNotes.map((note) => `- ${escapeWorkspaceXml(note)}`).join("\n")}\n</workspace_grounding_notes>`
+      : "";
+  return `Marinara executed Professor Mari's hidden workspace command${results.length === 1 ? "" : "s"}. Use these results to decide the next command or final answer.\n\n${blocks.join("\n\n")}${groundingBlock}`;
 }
 
 function formatContinuityResult(result: WorkspaceCommandResult, index: number): string {
@@ -1092,7 +1199,7 @@ function buildWorkspaceContinuitySnapshot(args: {
 }): string | null {
   const sections: string[] = [];
   if (args.userText.trim()) sections.push(`User request: ${compactTraceText(args.userText, 900)}`);
-  if (args.assistantText.trim())
+  if (args.assistantText.trim() && !isWorkspaceProtocolLeakText(args.assistantText))
     sections.push(`Visible assistant response/plan: ${compactTraceText(args.assistantText, 1400)}`);
   if (args.commandResults.length > 0) {
     sections.push(
@@ -1118,6 +1225,7 @@ function summarizeStoredTimeline(timeline: unknown): string | null {
       const output = typeof item.tool.output === "string" ? `\n${compactTraceText(item.tool.output, 800)}` : "";
       lines.push(`- ${name} ${status}${input}${output}`);
     } else if ((item.type === "status" || item.type === "text") && typeof item.content === "string") {
+      if (isWorkspaceProtocolLeakText(item.content)) continue;
       lines.push(`- ${item.type}: ${compactTraceText(item.content, 500)}`);
     }
   }
@@ -1126,7 +1234,7 @@ function summarizeStoredTimeline(timeline: unknown): string | null {
 
 function workspaceContinuityFromExtra(extra: Record<string, unknown>): string | null {
   if (typeof extra.mariWorkspaceContinuity === "string" && extra.mariWorkspaceContinuity.trim()) {
-    return compactTraceText(extra.mariWorkspaceContinuity, 5000);
+    return stripWorkspaceProtocolLeakLines(compactTraceText(extra.mariWorkspaceContinuity, 5000)) || null;
   }
   return summarizeStoredTimeline(extra.mariWorkspaceTimeline);
 }
@@ -1732,12 +1840,19 @@ export class ProfessorMariWorkspaceService {
           if (!action.protocolValid) {
             protocolRepairRounds += 1;
             if (protocolRepairRounds > MAX_PROTOCOL_REPAIR_ROUNDS) {
-              const content =
-                "Professor Mari kept returning plain text instead of the required JSON command object, so I stopped before burning more requests. Ask her to continue and she can pick up from the saved trace.";
-              assistantText = appendVisibleText(assistantText, content);
+              const salvageVisibleText = action.visibleText.trim();
+              const content = salvageVisibleText
+                ? "Professor Mari kept missing the JSON command envelope, so I surfaced her plain-text answer instead of burning more requests."
+                : "Professor Mari kept returning plain text instead of the required JSON command object, so I stopped before burning more requests. Ask her to continue and she can pick up from the saved trace.";
+              if (salvageVisibleText) {
+                assistantText = appendVisibleText(assistantText, salvageVisibleText);
+                appendTraceText(workspaceTrace, `${salvageVisibleText}\n`);
+              } else {
+                assistantText = appendVisibleText(assistantText, content);
+              }
               appendTraceStatus(workspaceTrace, content);
               args.onEvent({ type: "status", data: { content, kind: "info", level: "warning" } });
-              for (const chunk of chunkText(content)) args.onEvent({ type: "token", data: chunk });
+              for (const chunk of chunkText(salvageVisibleText || content)) args.onEvent({ type: "token", data: chunk });
               break;
             }
           } else {
@@ -2006,6 +2121,7 @@ ${entry.note ? `Note: ${entry.note}\n` : ""}${entry.prompt}
       const content = typeof row.content === "string" ? row.content : String(row.content ?? "");
       if (!content.trim()) continue;
       const role = roleForMessage(row);
+      if (role === "assistant" && isWorkspaceProtocolLeakText(content)) continue;
       const attachments = role === "user" ? normalizeProfessorMariAttachments(extra.attachments) : [];
       const images = extractImageAttachmentDataUrls(attachments);
       const files = extractFileAttachmentInputs(attachments);

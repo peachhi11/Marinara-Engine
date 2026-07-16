@@ -146,6 +146,16 @@ const CREATE_TABLES: string[] = [
     reason TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS persona_character_links (
+    id TEXT PRIMARY KEY NOT NULL,
+    persona_id TEXT NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
+    character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'primary',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_persona_character_links_persona_character ON persona_character_links(persona_id, character_id)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_persona_character_links_primary ON persona_character_links(persona_id) WHERE role = 'primary'",
   `CREATE TABLE IF NOT EXISTS character_groups (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
@@ -1514,6 +1524,35 @@ export async function runMigrations(db: DB) {
   await db.run(
     sql.raw(
       `CREATE UNIQUE INDEX IF NOT EXISTS uniq_lorebook_persona_links_pair ON lorebook_persona_links(lorebook_id, persona_id)`,
+    ),
+  );
+  await db.run(
+    sql.raw(`
+      DELETE FROM persona_character_links
+      WHERE rowid NOT IN (
+        SELECT MIN(rowid)
+        FROM persona_character_links
+        GROUP BY persona_id, character_id
+      )
+    `),
+  );
+  await db.run(
+    sql.raw(`
+      UPDATE persona_character_links
+      SET role = 'secondary'
+      WHERE role = 'primary'
+        AND rowid NOT IN (
+          SELECT MIN(rowid)
+          FROM persona_character_links
+          WHERE role = 'primary'
+          GROUP BY persona_id
+        )
+    `),
+  );
+  await db.run(sql.raw(`DROP INDEX IF EXISTS idx_persona_character_links_primary`));
+  await db.run(
+    sql.raw(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_persona_character_links_primary ON persona_character_links(persona_id) WHERE role = 'primary'`,
     ),
   );
 

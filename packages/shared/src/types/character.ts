@@ -229,6 +229,10 @@ export interface PersonaCardSnapshot {
   convoDisplayName: string;
   aboutMe: string;
   convoBehavior: string;
+  /** Persisted primary linked character id for editor/runtime pairing. Empty string = unset. */
+  linkedCharacterId: string;
+  /** Persisted persona-character relationship set as a JSON array of { characterId, role }. */
+  characterLinks: string;
 }
 
 /** Saved snapshot of a previous persona card state. */

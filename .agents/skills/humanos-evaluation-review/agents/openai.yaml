@@ -1,0 +1,4 @@
+interface:
+  display_name: "HumanOS Evaluation Review"
+  short_description: "Score and debug HumanOS behavior"
+  default_prompt: "Use $humanos-evaluation-review to score this HumanOS behavior, diagnose drift, and recommend targeted corrections."

@@ -1197,6 +1197,25 @@ function truncateStr(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
+function normalizeLorebookAuditText(value: unknown): string {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+}
+
+function lorebookEntryContentState(value: unknown): "empty" | "placeholder" | "present" {
+  const normalized = normalizeLorebookAuditText(value);
+  if (!normalized) return "empty";
+  const lower = normalized.toLowerCase();
+  if (
+    /^(todo|tbd|placeholder|fill me|fill this in|coming soon|to be written|to be added|write me|wip|test)$/i.test(
+      lower,
+    ) ||
+    /^(\.{3,}|-{3,}|_{3,})$/.test(normalized)
+  ) {
+    return "placeholder";
+  }
+  return "present";
+}
+
 function summarizeCharacterRow(row: Row): Row {
   const data = (tryParseJsonColumn(row, "data") as Record<string, unknown>) ?? {};
   return {
@@ -1224,6 +1243,22 @@ function summarizePersonaRow(row: Row): Row {
 }
 
 function summarizeLorebookRow(row: Row): Row {
+  const characterIds = Array.isArray(row.characterIds)
+    ? row.characterIds.slice(0, 4).map(String)
+    : typeof row.characterId === "string" && row.characterId.trim()
+      ? [row.characterId.trim()]
+      : [];
+  const personaIds = Array.isArray(row.personaIds)
+    ? row.personaIds.slice(0, 4).map(String)
+    : typeof row.personaId === "string" && row.personaId.trim()
+      ? [row.personaId.trim()]
+      : [];
+  const characterNames = Array.isArray(row.characterNames)
+    ? row.characterNames.slice(0, 4).map(String)
+    : [];
+  const personaNames = Array.isArray(row.personaNames)
+    ? row.personaNames.slice(0, 4).map(String)
+    : [];
   return {
     id: row.id,
     name: row.name,
@@ -1236,6 +1271,15 @@ function summarizeLorebookRow(row: Row): Row {
     vectorQueryDepth: row.vectorQueryDepth,
     vectorScoreThreshold: row.vectorScoreThreshold,
     vectorMaxResults: row.vectorMaxResults,
+    characterId: characterIds[0] ?? (row.characterId ?? null),
+    characterIds,
+    characterNames,
+    personaId: personaIds[0] ?? (row.personaId ?? null),
+    personaIds,
+    personaNames,
+    chatId: row.chatId ?? null,
+    sourceAgentId: row.sourceAgentId ?? null,
+    entryCount: typeof row.entryCount === "number" ? row.entryCount : undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -1243,6 +1287,8 @@ function summarizeLorebookRow(row: Row): Row {
 
 function summarizeLorebookEntryRow(row: Row): Row {
   const parsed = parseRow("lorebook_entries", row);
+  const content = typeof parsed.content === "string" ? parsed.content : "";
+  const contentState = lorebookEntryContentState(content);
   return {
     id: parsed.id,
     lorebookId: parsed.lorebookId,
@@ -1252,7 +1298,10 @@ function summarizeLorebookEntryRow(row: Row): Row {
     enabled: parsed.enabled,
     constant: parsed.constant,
     keys: parsed.keys,
-    content: typeof parsed.content === "string" ? truncateStr(parsed.content, 200) : "",
+    content: truncateStr(content, 200),
+    contentLength: normalizeLorebookAuditText(content).length,
+    contentState,
+    usable: contentState === "present",
     order: parsed.order,
     createdAt: parsed.createdAt,
     updatedAt: parsed.updatedAt,
@@ -1598,6 +1647,129 @@ export class MariDbService {
       logger.warn(err, "[mari-db] structured app_data action failed");
       return { ok: false, mode: "read", command, error: err instanceof Error ? err.message : String(err) };
     }
+  }
+
+  private async hydrateLorebookRows(rows: Row[]): Promise<Row[]> {
+    if (rows.length === 0) return [];
+    const lorebookIds = Array.from(new Set(rows.map((row) => String(row.id ?? "")).filter(Boolean)));
+    if (lorebookIds.length === 0) return rows.map((row) => ({ ...row }));
+
+    const [characterLinks, personaLinks, characterRows, personaRows, entryRows] = await Promise.all([
+      this.rawRows("lorebook_character_links"),
+      this.rawRows("lorebook_persona_links"),
+      this.rawRows("characters"),
+      this.rawRows("personas"),
+      this.rawRows("lorebook_entries"),
+    ]);
+
+    const characterIdsByLorebook = new Map<string, string[]>();
+    const personaIdsByLorebook = new Map<string, string[]>();
+    const entryCountByLorebook = new Map<string, number>();
+
+    for (const link of characterLinks) {
+      const lorebookId = typeof link.lorebookId === "string" ? link.lorebookId : "";
+      const characterId = typeof link.characterId === "string" ? link.characterId : "";
+      if (!lorebookIds.includes(lorebookId) || !characterId) continue;
+      const ids = characterIdsByLorebook.get(lorebookId) ?? [];
+      ids.push(characterId);
+      characterIdsByLorebook.set(lorebookId, ids);
+    }
+    for (const link of personaLinks) {
+      const lorebookId = typeof link.lorebookId === "string" ? link.lorebookId : "";
+      const personaId = typeof link.personaId === "string" ? link.personaId : "";
+      if (!lorebookIds.includes(lorebookId) || !personaId) continue;
+      const ids = personaIdsByLorebook.get(lorebookId) ?? [];
+      ids.push(personaId);
+      personaIdsByLorebook.set(lorebookId, ids);
+    }
+    for (const entry of entryRows) {
+      const lorebookId = typeof entry.lorebookId === "string" ? entry.lorebookId : "";
+      if (!lorebookIds.includes(lorebookId)) continue;
+      entryCountByLorebook.set(lorebookId, (entryCountByLorebook.get(lorebookId) ?? 0) + 1);
+    }
+
+    const characterNameById = new Map<string, string>();
+    for (const characterRow of characterRows) {
+      const id = typeof characterRow.id === "string" ? characterRow.id : "";
+      if (!id) continue;
+      const data = (tryParseJsonColumn(characterRow, "data") as Record<string, unknown> | undefined) ?? {};
+      const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : id;
+      characterNameById.set(id, name);
+    }
+    const personaNameById = new Map<string, string>();
+    for (const personaRow of personaRows) {
+      const id = typeof personaRow.id === "string" ? personaRow.id : "";
+      if (!id) continue;
+      const name = typeof personaRow.name === "string" && personaRow.name.trim() ? personaRow.name.trim() : id;
+      personaNameById.set(id, name);
+    }
+
+    return rows.map((row) => {
+      const lorebookId = typeof row.id === "string" ? row.id : "";
+      const fallbackCharacterId =
+        typeof row.characterId === "string" && row.characterId.trim() ? row.characterId.trim() : null;
+      const fallbackPersonaId =
+        typeof row.personaId === "string" && row.personaId.trim() ? row.personaId.trim() : null;
+      const linkedCharacterIds = Array.from(
+        new Set([...(characterIdsByLorebook.get(lorebookId) ?? []), ...(fallbackCharacterId ? [fallbackCharacterId] : [])]),
+      );
+      const linkedPersonaIds = Array.from(
+        new Set([...(personaIdsByLorebook.get(lorebookId) ?? []), ...(fallbackPersonaId ? [fallbackPersonaId] : [])]),
+      );
+      return {
+        ...row,
+        characterId: linkedCharacterIds[0] ?? null,
+        characterIds: linkedCharacterIds,
+        characterNames: linkedCharacterIds.map((id) => characterNameById.get(id) ?? id),
+        personaId: linkedPersonaIds[0] ?? null,
+        personaIds: linkedPersonaIds,
+        personaNames: linkedPersonaIds.map((id) => personaNameById.get(id) ?? id),
+        entryCount: entryCountByLorebook.get(lorebookId) ?? 0,
+      };
+    });
+  }
+
+  private lorebookSearchScore(row: Row, query: string): number {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return 0;
+    const exact = (value: string) => value === normalizedQuery;
+    const starts = (value: string) => value.startsWith(normalizedQuery);
+    const contains = (value: string) => value.includes(normalizedQuery);
+    const scoreText = (value: string, weights: { exact: number; starts: number; contains: number }) => {
+      if (!value) return 0;
+      if (exact(value)) return weights.exact;
+      if (starts(value)) return weights.starts;
+      if (contains(value)) return weights.contains;
+      return 0;
+    };
+
+    const name = typeof row.name === "string" ? row.name.trim().toLowerCase() : "";
+    const description = typeof row.description === "string" ? row.description.trim().toLowerCase() : "";
+    const category = typeof row.category === "string" ? row.category.trim().toLowerCase() : "";
+    const tags = Array.isArray(tryParseJsonColumn(row, "tags"))
+      ? (tryParseJsonColumn(row, "tags") as unknown[]).map((value) => String(value).trim().toLowerCase())
+      : [];
+    const characterNames = Array.isArray(row.characterNames)
+      ? row.characterNames.map((value) => String(value).trim().toLowerCase())
+      : [];
+    const personaNames = Array.isArray(row.personaNames)
+      ? row.personaNames.map((value) => String(value).trim().toLowerCase())
+      : [];
+
+    let score = 0;
+    score += scoreText(name, { exact: 1000, starts: 800, contains: 650 });
+    score += scoreText(category, { exact: 120, starts: 90, contains: 60 });
+    score += characterNames.reduce((best, value) => Math.max(best, scoreText(value, { exact: 500, starts: 380, contains: 260 })), 0);
+    score += personaNames.reduce((best, value) => Math.max(best, scoreText(value, { exact: 500, starts: 380, contains: 260 })), 0);
+    score += tags.reduce((best, value) => Math.max(best, scoreText(value, { exact: 180, starts: 120, contains: 90 })), 0);
+    score += scoreText(description, { exact: 80, starts: 50, contains: 25 });
+    if (score === 0 && JSON.stringify(row).toLowerCase().includes(normalizedQuery)) score = 5;
+    return score;
+  }
+
+  private async summarizeLorebookRows(rows: Row[]): Promise<Row[]> {
+    const hydrated = await this.hydrateLorebookRows(rows);
+    return hydrated.map((row) => summarizeLorebookRow(row));
   }
 
   private async executeCharacterAction(
@@ -1998,14 +2170,14 @@ export class MariDbService {
         const rows = (await this.rawRows("lorebooks"))
           .filter((row) => !globalOnly || row.isGlobal === "true")
           .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
-        return { ok: true, mode: "read", command: context.command, output: rows.slice(0, limit).map(summarizeLorebookRow) };
+        return { ok: true, mode: "read", command: context.command, output: await this.summarizeLorebookRows(rows.slice(0, limit)) };
       }
       case "get": {
         const id = requiredString(args, ["id", "lorebookId"], "lorebook id");
         const row = await this.getRawById(getMeta("lorebooks"), id);
         if (!row) return { ok: false, mode: "read", command: context.command, output: null };
-        const entryCount = (await this.rawRows("lorebook_entries")).filter((entry) => entry.lorebookId === id).length;
-        return { ok: true, mode: "read", command: context.command, output: { ...parseRow("lorebooks", row), entryCount } };
+        const hydrated = (await this.hydrateLorebookRows([row]))[0] ?? row;
+        return { ok: true, mode: "read", command: context.command, output: parseRow("lorebooks", hydrated) };
       }
       case "entries": {
         const lorebookId = requiredString(args, ["lorebookId", "id"], "lorebook id");
@@ -2032,10 +2204,16 @@ export class MariDbService {
       case "search": {
         const query = requiredString(args, ["query", "search"], "lorebook search query").toLowerCase();
         const limit = normalizeLimit(firstNumber(args, ["limit"]), 50, 1000);
-        const rows = (await this.rawRows("lorebooks"))
-          .filter((row) => JSON.stringify(row).toLowerCase().includes(query))
+        const hydrated = await this.hydrateLorebookRows(await this.rawRows("lorebooks"));
+        const rows = hydrated
+          .map((row) => ({ row, score: this.lorebookSearchScore(row, query) }))
+          .filter((candidate) => candidate.score > 0)
+          .sort(
+            (a, b) =>
+              b.score - a.score || String(b.row.updatedAt ?? "").localeCompare(String(a.row.updatedAt ?? "")),
+          )
           .slice(0, limit)
-          .map(summarizeLorebookRow);
+          .map((candidate) => summarizeLorebookRow(candidate.row));
         return { ok: true, mode: "read", command: context.command, output: rows };
       }
       case "create": {
@@ -3391,19 +3569,23 @@ export class MariDbService {
         const limit = normalizeLimit(flagString(flags, "limit"), 50, 1000);
         const globalOnly = hasFlag(flags, "global");
         const characterId = flagString(flags, "character");
-        const rows = (await this.rawRows("lorebooks"))
+        const rows = await this.hydrateLorebookRows((await this.rawRows("lorebooks"))
           .filter((row) => !globalOnly || row.isGlobal === "true")
-          .filter((row) => !characterId || row.characterId === characterId)
-          .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? "")));
-        return { ok: true, mode: "read", command: context.command, output: rows.slice(0, limit).map(summarizeLorebookRow) };
+          .sort((a, b) => String(b.updatedAt ?? "").localeCompare(String(a.updatedAt ?? ""))));
+        const filtered = rows.filter((row) => {
+          if (!characterId) return true;
+          const ids = Array.isArray(row.characterIds) ? row.characterIds.map(String) : [];
+          return ids.includes(characterId) || row.characterId === characterId;
+        });
+        return { ok: true, mode: "read", command: context.command, output: filtered.slice(0, limit).map(summarizeLorebookRow) };
       }
       case "get": {
         const id = parsed.positionals[0];
         if (!id) throw new Error("Usage: mari lorebooks get <id>");
         const row = await this.getRawById(getMeta("lorebooks"), id);
         if (!row) return { ok: false, mode: "read", command: context.command, output: null };
-        const entryCount = (await this.rawRows("lorebook_entries")).filter((e) => e.lorebookId === id).length;
-        return { ok: true, mode: "read", command: context.command, output: { ...parseRow("lorebooks", row), entryCount } };
+        const hydrated = (await this.hydrateLorebookRows([row]))[0] ?? row;
+        return { ok: true, mode: "read", command: context.command, output: parseRow("lorebooks", hydrated) };
       }
       case "entries": {
         const lorebookId = parsed.positionals[0];
@@ -3434,10 +3616,15 @@ export class MariDbService {
         if (!query) throw new Error("Usage: mari lorebooks search <query>");
         const needle = query.toLowerCase();
         const limit = normalizeLimit(flagString(flags, "limit"), 50, 1000);
-        const rows = (await this.rawRows("lorebooks"))
-          .filter((row) => JSON.stringify(row).toLowerCase().includes(needle))
+        const rows = (await this.hydrateLorebookRows(await this.rawRows("lorebooks")))
+          .map((row) => ({ row, score: this.lorebookSearchScore(row, needle) }))
+          .filter((candidate) => candidate.score > 0)
+          .sort(
+            (a, b) =>
+              b.score - a.score || String(b.row.updatedAt ?? "").localeCompare(String(a.row.updatedAt ?? "")),
+          )
           .slice(0, limit)
-          .map(summarizeLorebookRow);
+          .map((candidate) => summarizeLorebookRow(candidate.row));
         return { ok: true, mode: "read", command: context.command, output: rows };
       }
       case "create": {

@@ -6,12 +6,14 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { characters, messages, personas } from "../db/schema/index.js";
+import type { Lorebook, LorebookEntry } from "@marinara-engine/shared";
 import {
   createHumanOSArchitectureStorage,
   type HumanOSSubjectType,
 } from "../services/storage/humanos-architecture.storage.js";
 import { createHumanOSRuntimeStorage } from "../services/storage/humanos-runtime.storage.js";
 import { createRelationshipSavesStorage, relationshipSaveTargetKey } from "../services/storage/relationship-saves.storage.js";
+import { createLorebooksStorage } from "../services/storage/lorebooks.storage.js";
 
 const subjectTypeSchema = z.enum(["CHARACTER", "USER_PERSONA"]);
 const architectureSchema = z
@@ -37,6 +39,237 @@ const relationshipSaveSchema = z
   })
   .strict();
 
+const narrativeArcGenerateSchema = z
+  .object({
+    mode: z.enum(["character", "persona"]),
+    character: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        personality: z.string().optional(),
+        scenario: z.string().optional(),
+      })
+      .optional(),
+    persona: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        personality: z.string().optional(),
+        scenario: z.string().optional(),
+      })
+      .optional(),
+    runtime: z.record(z.string(), z.unknown()).optional(),
+    relationshipSave: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+const narrativeArcLorebookApplySchema = z
+  .object({
+    mode: z.enum(["character", "persona"]),
+    variant: z.enum(["ALT", "BRANCH"]).default("ALT"),
+    targetLorebookId: z.string().min(1),
+    subject: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .optional(),
+    linkedCharacter: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+      })
+      .optional(),
+    draft: z.string().optional(),
+    firstMessage: z.string().optional(),
+    alternateOpenings: z.array(z.string()).optional(),
+    lorebookHook: z.string().optional(),
+  })
+  .strict();
+
+function nonEmpty(value: string | undefined | null) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function summarizeObject(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => typeof v === "string" && v.trim().length > 0)
+    .slice(0, 4)
+    .map(([k, v]) => `${k}: ${(v as string).trim()}`);
+  return entries.length > 0 ? entries.join("; ") : null;
+}
+
+function normalizeLineList(values: string[] | undefined): string[] {
+  if (!Array.isArray(values)) return [];
+  return values.map((value) => value.trim()).filter((value) => value.length > 0);
+}
+
+function buildNarrativeArcLorebookContent(input: {
+  lorebookHook: string | null;
+  firstMessage: string | null;
+  alternateOpenings: string[];
+}): string {
+  const parts: string[] = [];
+  if (input.lorebookHook) {
+    parts.push("Narrative arc direction:");
+    parts.push(input.lorebookHook);
+  }
+  if (input.firstMessage) {
+    if (parts.length > 0) parts.push("");
+    parts.push("First message seed:");
+    parts.push(input.firstMessage);
+  }
+  if (input.alternateOpenings.length > 0) {
+    if (parts.length > 0) parts.push("");
+    parts.push("Alternate openings:");
+    for (const opening of input.alternateOpenings) parts.push(`- ${opening}`);
+  }
+  return parts.join("\n").trim();
+}
+
+function narrativeArcEntryKey(identity: {
+  mode: "character" | "persona";
+  variant?: "ALT" | "BRANCH" | null;
+  subjectId: string | null;
+  subjectName: string | null;
+  linkedCharacterId: string | null;
+  linkedCharacterName: string | null;
+}) {
+  return JSON.stringify({
+    kind: "humanos_narrative_arc",
+    mode: identity.mode,
+    variant: identity.variant ?? "ALT",
+    subjectId: identity.subjectId,
+    subjectName: identity.subjectName?.toLowerCase() ?? null,
+    linkedCharacterId: identity.linkedCharacterId,
+    linkedCharacterName: identity.linkedCharacterName?.toLowerCase() ?? null,
+  });
+}
+
+function matchesNarrativeArcManagedEntry(
+  entry: {
+    tag?: string;
+    dynamicState?: Record<string, unknown>;
+  },
+  identity: {
+    mode: "character" | "persona";
+    variant?: "ALT" | "BRANCH" | null;
+    subjectId: string | null;
+    subjectName: string | null;
+    linkedCharacterId: string | null;
+    linkedCharacterName: string | null;
+  },
+) {
+  if (entry.tag !== "humanos:narrative-arc") return false;
+  const dynamicState = entry.dynamicState;
+  if (!dynamicState || typeof dynamicState !== "object") return false;
+  const manager = dynamicState.humanosNarrativeArc;
+  if (!manager || typeof manager !== "object") return false;
+  const managerRecord = manager as Record<string, unknown>;
+  if (managerRecord.kind !== "narrative_arc_projection") return false;
+  return narrativeArcEntryKey({
+    mode: managerRecord.mode === "persona" ? "persona" : "character",
+    variant: managerRecord.variant === "BRANCH" ? "BRANCH" : "ALT",
+    subjectId: typeof managerRecord.subjectId === "string" ? managerRecord.subjectId : null,
+    subjectName: typeof managerRecord.subjectName === "string" ? managerRecord.subjectName : null,
+    linkedCharacterId: typeof managerRecord.linkedCharacterId === "string" ? managerRecord.linkedCharacterId : null,
+    linkedCharacterName:
+      typeof managerRecord.linkedCharacterName === "string" ? managerRecord.linkedCharacterName : null,
+  }) === narrativeArcEntryKey(identity);
+}
+
+function buildNarrativeArcDraft(input: z.infer<typeof narrativeArcGenerateSchema>) {
+  const characterName = nonEmpty(input.character?.name) ?? "the character";
+  const personaName = nonEmpty(input.persona?.name) ?? "the persona";
+  const characterDetails = [input.character?.description, input.character?.personality, input.character?.scenario]
+    .map(nonEmpty)
+    .filter(Boolean)
+    .join(" ");
+  const personaDetails = [input.persona?.description, input.persona?.personality, input.persona?.scenario]
+    .map(nonEmpty)
+    .filter(Boolean)
+    .join(" ");
+  const runtimeSummary = summarizeObject(input.runtime) ?? "current runtime state";
+  const relationshipSummary = summarizeObject(input.relationshipSave) ?? "relationship-save history";
+
+  if (input.mode === "character") {
+    const draft = [
+      "# Narrative Arc Overview",
+      "",
+      "## Setup",
+      `The story opens from ${characterName}'s built identity and the current scenario context.`,
+      "",
+      "## Escalation",
+      `Pressure grows from ${characterName}'s established motives and the scene's immediate friction.`,
+      "",
+      "## Complication",
+      "The next step introduces a cost, conflict, or emotional snag that slows the obvious path.",
+      "",
+      "## Turning Point",
+      "A choice, reveal, or shift in pressure changes the direction of the scene.",
+      "",
+      "## Resolution / Transition",
+      "The arc settles into a new steady state, ready for the next regeneration.",
+      "",
+      "## Current Runtime Notes",
+      `Runtime focus: ${runtimeSummary}. Built from: ${characterDetails || "the character card."}`,
+      "",
+      "## Story Seeds",
+      "- First message draft",
+      "- Alternate opening",
+      "- Narrative arc lorebook hook",
+    ].join("\n");
+    return {
+      draft,
+      firstMessage: `Open the scene from ${characterName}'s current pressure and let the story begin in motion.`,
+      alternateOpenings: [
+        `Start with ${characterName} already mid-stride in the current situation.`,
+        `Start with the scene's tension visible before ${characterName} speaks.`,
+      ],
+      lorebookHook: `Use this arc to anchor runtime notes about ${characterName}'s current scene pressure and story direction.`,
+    };
+  }
+
+  const draft = [
+    "# Narrative Arc Overview",
+    "",
+    "## Setup",
+    `The story opens from ${characterName}, ${personaName}, and the current relationship state.`,
+    "",
+    "## Escalation",
+    "The shared scene pressure begins to sharpen around the current pairing.",
+    "",
+    "## Complication",
+    "A meaningful obstacle, misunderstanding, or emotional cost enters the arc.",
+    "",
+    "## Turning Point",
+    "The pairing changes direction through a choice, reveal, or decisive beat.",
+    "",
+    "## Resolution / Transition",
+    "The arc settles into a new phase and can be regenerated later.",
+    "",
+    "## Current Runtime Notes",
+    `Runtime focus: ${runtimeSummary}. Linked character: ${characterDetails || "none yet"}. Persona: ${personaDetails || "the current persona."}. Relationship save: ${relationshipSummary}.`,
+    "",
+    "## Story Seeds",
+    "- Current runtime projection",
+    "- Lorebook update target",
+    "- Alternate opening point",
+  ].join("\n");
+  return {
+    draft,
+    firstMessage: `Open the scene from ${characterName} and ${personaName} already in the current pressure.`,
+    alternateOpenings: [
+      `Start with ${personaName} noticing the current shift in ${characterName}'s mood or intent.`,
+      `Start with the shared tension already in motion between ${characterName} and ${personaName}.`,
+    ],
+    lorebookHook: `Use this arc to update the current runtime and any lorebook hooks for ${characterName} and ${personaName}.`,
+  };
+}
+
 async function subjectExists(app: FastifyInstance, subjectType: HumanOSSubjectType, subjectId: string) {
   if (subjectType === "CHARACTER") {
     const rows = await app.db.select({ id: characters.id }).from(characters).where(eq(characters.id, subjectId)).limit(1);
@@ -50,6 +283,7 @@ export async function humanosV2Routes(app: FastifyInstance) {
   const architectures = createHumanOSArchitectureStorage(app.db);
   const runtime = createHumanOSRuntimeStorage(app.db);
   const relationshipSaves = createRelationshipSavesStorage(app.db);
+  const lorebooks = createLorebooksStorage(app.db);
 
   app.get("/architecture/:subjectType/:subjectId", async (req, reply) => {
     const params = z
@@ -101,6 +335,133 @@ export async function humanosV2Routes(app: FastifyInstance) {
     const row = await runtime.getLatestCommitted(params.data.chatId);
     if (!row) return reply.status(404).send({ error: "HumanOS Runtime not found" });
     return { ...row, state: JSON.parse(row.state) as unknown };
+  });
+
+  app.post("/narrative-arc/generate", async (req, reply) => {
+    const parsed = narrativeArcGenerateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid narrative arc payload", details: parsed.error.flatten() });
+    }
+    return buildNarrativeArcDraft(parsed.data);
+  });
+
+  app.post("/narrative-arc/apply-lorebook", async (req, reply) => {
+    const parsed = narrativeArcLorebookApplySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid narrative arc lorebook payload", details: parsed.error.flatten() });
+    }
+
+    const targetLorebook = (await lorebooks.getById(parsed.data.targetLorebookId)) as Lorebook | null;
+    if (!targetLorebook) {
+      return reply.status(404).send({ error: "Target lorebook not found" });
+    }
+
+    const subjectName = nonEmpty(parsed.data.subject?.name);
+    const linkedCharacterName = nonEmpty(parsed.data.linkedCharacter?.name);
+    const firstMessage = nonEmpty(parsed.data.firstMessage);
+    const lorebookHook = nonEmpty(parsed.data.lorebookHook);
+    const alternateOpenings = normalizeLineList(parsed.data.alternateOpenings);
+    const content = buildNarrativeArcLorebookContent({
+      lorebookHook,
+      firstMessage,
+      alternateOpenings,
+    });
+    if (!content) {
+      return reply.status(400).send({ error: "Narrative arc apply requires lorebook-ready content" });
+    }
+
+    const identity = {
+      mode: parsed.data.mode,
+      variant: parsed.data.variant,
+      subjectId: nonEmpty(parsed.data.subject?.id),
+      subjectName,
+      linkedCharacterId: nonEmpty(parsed.data.linkedCharacter?.id),
+      linkedCharacterName,
+    };
+    const description =
+      parsed.data.mode === "character"
+        ? `Managed HumanOS narrative arc projection (${parsed.data.variant}) for ${subjectName ?? "the character"}. Full draft stored in entry metadata.`
+        : `Managed HumanOS narrative arc projection (${parsed.data.variant}) for ${subjectName ?? "the persona"} and ${linkedCharacterName ?? "the linked character"}. Full draft stored in entry metadata.`;
+    const keys = Array.from(
+      new Set(
+        [
+          subjectName,
+          linkedCharacterName,
+          "runtime arc",
+          "narrative arc",
+          `narrative arc ${parsed.data.variant.toLowerCase()}`,
+          parsed.data.mode === "persona" ? "persona runtime arc" : "character runtime arc",
+        ].filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+      ),
+    );
+    const managedState = {
+      humanosNarrativeArc: {
+        kind: "narrative_arc_projection",
+        schemaVersion: 1,
+        mode: parsed.data.mode,
+        variant: parsed.data.variant,
+        subjectId: identity.subjectId,
+        subjectName,
+        linkedCharacterId: identity.linkedCharacterId,
+        linkedCharacterName,
+        draft: parsed.data.draft ?? "",
+        firstMessage: firstMessage ?? "",
+        alternateOpenings,
+        lorebookHook: lorebookHook ?? "",
+        appliedAt: new Date().toISOString(),
+      },
+    };
+
+    const existingEntries = (await lorebooks.listEntries(parsed.data.targetLorebookId)) as LorebookEntry[];
+    const existing = existingEntries.find((entry) => matchesNarrativeArcManagedEntry(entry, identity)) ?? null;
+    if (existing?.locked) {
+      return reply.status(409).send({
+        error: "NARRATIVE_ARC_TARGET_ENTRY_LOCKED",
+        entryId: existing.id,
+      });
+    }
+
+    const name =
+      parsed.data.mode === "character"
+        ? `${parsed.data.variant} Runtime Arc Projection`
+        : `${parsed.data.variant} Persona Runtime Arc Projection`;
+
+    if (existing) {
+      const updated = await lorebooks.updateEntry(existing.id, {
+        name,
+        content,
+        description,
+        keys,
+        enabled: true,
+        constant: false,
+        tag: "humanos:narrative-arc",
+        dynamicState: managedState,
+      });
+      return {
+        action: "updated" as const,
+        lorebookId: parsed.data.targetLorebookId,
+        lorebookName: targetLorebook.name,
+        entry: updated,
+      };
+    }
+
+    const created = await lorebooks.createEntry({
+      lorebookId: parsed.data.targetLorebookId,
+      name,
+      content,
+      description,
+      keys,
+      enabled: true,
+      constant: false,
+      tag: "humanos:narrative-arc",
+      dynamicState: managedState,
+    });
+    return {
+      action: "created" as const,
+      lorebookId: parsed.data.targetLorebookId,
+      lorebookName: targetLorebook.name,
+      entry: created,
+    };
   });
 
   // Runtime commits are agent-authored, post-canonical writes. The public HTTP

@@ -202,6 +202,13 @@ The full guide library is browsable inside the app: open **Documentation** from 
 | [docs/home/professor-mari.md](docs/home/professor-mari.md)     | Built-in assistant capabilities, limits, and safety notes       |
 | [docs/development/frontend.md](docs/development/frontend.md)                 | Frontend architecture, components, hooks, and API reference     |
 | [docs/development/architecture-map.md](docs/development/architecture-map.md) | Code ownership map and module-boundary refactor groundwork      |
+| [docs/development/humanos-v2-architecture.md](docs/development/humanos-v2-architecture.md) | HumanOS v2 design, truth layers, and runtime flow              |
+| [docs/development/humanos-architecture-index.md](docs/development/humanos-architecture-index.md) | HumanOS layer map across character, persona, runtime, lorebook, and relationship save |
+| [docs/development/humanos-character-card-template.md](docs/development/humanos-character-card-template.md) | HumanOS character authoring template                           |
+| [docs/development/humanos-persona-template.md](docs/development/humanos-persona-template.md) | HumanOS persona authoring template                              |
+| [docs/development/humanos-runtime-contract.md](docs/development/humanos-runtime-contract.md) | HumanOS runtime state contract                                  |
+| [docs/development/humanos-narrative-arc-contract.md](docs/development/humanos-narrative-arc-contract.md) | HumanOS narrative arc projection contract                       |
+| [docs/development/humanos-narrative-generator-ui.md](docs/development/humanos-narrative-generator-ui.md) | HumanOS narrative generator UI contract                         |
 | [android/README.md](android/README.md)               | Android Termux bootstrap + WebView shell guide                  |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Contributor workflow, validation, versioning, and release steps |
 | [CHANGELOG.md](CHANGELOG.md)                         | Release notes                                                   |

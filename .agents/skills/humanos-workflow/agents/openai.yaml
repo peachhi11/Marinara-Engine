@@ -1,0 +1,4 @@
+interface:
+  display_name: "HumanOS Workflow"
+  short_description: "Route HumanOS design and QC work"
+  default_prompt: "Use $humanos-workflow to route this HumanOS task through the right architecture, prompt, memory, and evaluation workflow."

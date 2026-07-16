@@ -89,6 +89,8 @@ Current top-level shape:
 - `services/game`: GM prompts, dice, combat, state machine, party prompts, maps, weather, time, sessions, checkpoints, reputation, assets.
 - `services/sidecar`: local runtime, model management, scene analysis, scene postprocessing.
 - `services/agents`: agent execution and knowledge routing.
+- `services/humanos`: HumanOS v2 private architecture storage and scoped tool runtime for characters and user personas.
+- `services/generation/humanos-*`: HumanOS v2 dependency planning, ordered review, publication policy, turn snapshots, and candidate promotion.
 - Feature foundations: `services/import`, `services/lorebook`, `services/image`, `services/haptic`, `services/tools`, `services/extensions`, `services/regex`, `services/professor-mari`, `services/mari-db`, `services/turn-games`, `services/spotify`, `services/video`, `services/generation`, `services/chat-summary`, `services/achievements`, `services/prompt-overrides`, `services/setup`, `services/noodle`, `services/memory-recall`, and `discord-webhook.ts`.
 - `db/schema`: temporary compatibility schema for the in-memory SQL index while durable data lives in `DATA_DIR/storage`.
 - `db/file-backed-store.ts`: the bridge that imports legacy SQLite into JSON snapshots and autosaves runtime changes back to files. See [File Storage Migration (Developers)](file-storage-migration.md).
@@ -110,6 +112,7 @@ These are global foundations:
 - Characters and personas: character routes, storage, schemas, and client character hooks and editors.
 - Connections and providers: connection routes, storage, shared provider constants, and `services/llm`.
 - Prompt presets, lorebooks, regex, custom tools: shared authoring and prompt-injection foundations.
+- HumanOS v2 private architecture and committed runtime: durable subject architecture, canonical-turn runtime commits, and ordered review gatekeeping.
 - Generation transport: `packages/client/src/hooks/use-generate.ts`, `packages/server/src/routes/generate.routes.ts`, and the provider registry.
 - TTS, translation, gallery, themes, settings, imports, backups.
 

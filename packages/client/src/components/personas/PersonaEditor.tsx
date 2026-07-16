@@ -3,11 +3,13 @@
 // Replaces the chat area when editing a persona.
 // Sections: Metadata, Card, Convo, Lorebook, Sprites, Gallery, Colors, Stats
 // ──────────────────────────────────────────────
-import { useState, useEffect, useRef, useCallback, type ChangeEvent, type ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ChangeEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
+  useCharacter,
+  useCharacters,
   useCreateCharacter,
-  usePersonas,
+  usePersona,
   useUpdatePersona,
   useUploadAvatar,
   useUploadPersonaAvatar,
@@ -103,7 +105,9 @@ import {
   syncRpgHpFromPools,
   type CharacterData,
   type ConvoBehaviorConfig,
+  type Persona,
   type PersonaCardSnapshot,
+  type PersonaCharacterLinkRole,
   type PersonaCardVersion,
   type RPGStatPool,
   type RPGStatsConfig,
@@ -112,6 +116,7 @@ import {
 import { useQuoteFormatter } from "../../hooks/use-quote-formatter";
 import { LorebookAssignmentSection } from "../lorebooks/LorebookAssignmentSection";
 import { ConvoProfileFields } from "../characters/ConvoProfileFields";
+import { NarrativeGeneratorTab } from "../humanos/NarrativeGeneratorTab";
 
 // ── Tabs ──
 const TABS = [
@@ -123,6 +128,7 @@ const TABS = [
   { id: "gallery", label: "Gallery", icon: Camera },
   { id: "colors", label: "Colors", icon: Palette },
   { id: "stats", label: "Stats", icon: Activity },
+  { id: "runtime", label: "Runtime", icon: Activity },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -140,7 +146,7 @@ function formatPersonaTextTokens(value: string): string {
 }
 
 const PERSONA_METADATA_HELP =
-  "Use metadata for identity, sharing, and library organization. Name is injected as your persona name, creator/version help track authorship and revisions, tags make the persona searchable, and creator notes stay private.";
+  "Use metadata for identity, sharing, library organization, and editor-only pairing. Name is injected as your persona name, creator/version help track authorship and revisions, linked character controls the persistent HumanOS pairing, tags make the persona searchable, and creator notes stay private.";
 
 const PERSONA_CARD_HELP =
   "Write the fields that define how the model sees your persona. Description, personality, backstory, appearance, and scenario are kept together so the card feels like one writing document.";
@@ -197,39 +203,12 @@ interface PersonaFormData {
   convoDisplayName: string;
   aboutMe: string;
   convoBehavior: ConvoBehaviorConfig | null;
+  characterLinks: PersonaCharacterLinkDraft[];
+  linkedCharacterId: string;
   /** Avatar crop region (parsed from the persona row's JSON-encoded `avatarCrop`).
    *  May be the current source-relative shape, the legacy zoom+offset shape (held
    *  through until the user re-edits via the cropper), or null when unset. */
   avatarCrop: AvatarCrop | LegacyAvatarCrop | null;
-}
-
-interface PersonaRow {
-  id: string;
-  name: string;
-  comment?: string;
-  phoneticName?: string;
-  creator?: string;
-  personaVersion?: string;
-  creatorNotes?: string;
-  description: string;
-  personality: string;
-  scenario: string;
-  backstory: string;
-  appearance: string;
-  avatarPath: string | null;
-  /** JSON-encoded AvatarCrop, or empty string when unset. */
-  avatarCrop?: string;
-  isActive: string | boolean;
-  nameColor?: string;
-  dialogueColor?: string;
-  boxColor?: string;
-  trackerCardColors?: string;
-  personaStats?: string;
-  tags?: string;
-  savedStatusOptions?: string;
-  convoDisplayName?: string;
-  aboutMe?: string;
-  convoBehavior?: string;
 }
 
 function appendNewTags(existingTags: string[], rawInput: string) {
@@ -256,6 +235,104 @@ function formatPersonaFieldValue<K extends keyof PersonaFormData>(
     return formatQuotes(value) as PersonaFormData[K];
   }
   return value;
+}
+
+type CharacterLinkOption = {
+  id: string;
+  name: string;
+};
+
+type PersonaCharacterLinkDraft = {
+  characterId: string;
+  role: PersonaCharacterLinkRole;
+};
+
+function readCharacterLinkOptions(rows: unknown): CharacterLinkOption[] {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .flatMap((row) => {
+      if (!row || typeof row !== "object") return [];
+      const record = row as { id?: unknown; data?: unknown };
+      const id = typeof record.id === "string" && record.id.trim() ? record.id.trim() : "";
+      if (!id) return [];
+      const rawData = record.data;
+      let name = id;
+      if (rawData && typeof rawData === "object" && "name" in rawData && typeof rawData.name === "string" && rawData.name.trim()) {
+        name = rawData.name.trim();
+      } else if (typeof rawData === "string" && rawData.trim()) {
+        try {
+          const parsed = JSON.parse(rawData) as { name?: unknown };
+          if (typeof parsed.name === "string" && parsed.name.trim()) name = parsed.name.trim();
+        } catch {
+          // Ignore malformed card payloads and fall back to id.
+        }
+      }
+      return [{ id, name }];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
+function normalizePersonaCharacterLinkDrafts(
+  links: Array<{ characterId?: string | null; role?: PersonaCharacterLinkRole | null }> | null | undefined,
+  fallbackPrimaryCharacterId?: string | null,
+): PersonaCharacterLinkDraft[] {
+  const normalized: PersonaCharacterLinkDraft[] = [];
+  const seen = new Set<string>();
+
+  for (const link of links ?? []) {
+    const characterId = typeof link.characterId === "string" ? link.characterId.trim() : "";
+    if (!characterId || seen.has(characterId)) continue;
+    seen.add(characterId);
+    normalized.push({
+      characterId,
+      role: link.role === "primary" ? "primary" : "secondary",
+    });
+  }
+
+  const fallbackPrimary = typeof fallbackPrimaryCharacterId === "string" ? fallbackPrimaryCharacterId.trim() : "";
+  if (fallbackPrimary) {
+    const existingPrimary = normalized.find((link) => link.characterId === fallbackPrimary);
+    if (existingPrimary) {
+      existingPrimary.role = "primary";
+    } else {
+      normalized.unshift({ characterId: fallbackPrimary, role: "primary" });
+    }
+  }
+
+  let foundPrimary = false;
+  for (const link of normalized) {
+    if (link.role !== "primary") continue;
+    if (!foundPrimary) {
+      foundPrimary = true;
+      continue;
+    }
+    link.role = "secondary";
+  }
+
+  return normalized;
+}
+
+function getPrimaryPersonaCharacterLinkId(links: PersonaCharacterLinkDraft[] | null | undefined) {
+  return links?.find((link) => link.role === "primary")?.characterId ?? "";
+}
+
+function readPersonaCharacterLinks(value: unknown, fallbackPrimaryCharacterId?: string | null): PersonaCharacterLinkDraft[] {
+  if (!Array.isArray(value)) {
+    return normalizePersonaCharacterLinkDrafts([], fallbackPrimaryCharacterId);
+  }
+
+  const parsed = value
+    .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object" && !Array.isArray(entry))
+    .map((entry) => ({
+      characterId: typeof entry.characterId === "string" ? entry.characterId : "",
+      role: entry.role === "primary" ? ("primary" as const) : ("secondary" as const),
+    }));
+
+  return normalizePersonaCharacterLinkDrafts(parsed, fallbackPrimaryCharacterId);
+}
+
+function findCharacterLinkOptionName(options: CharacterLinkOption[], characterId: string) {
+  return options.find((option) => option.id === characterId)?.name ?? characterId;
 }
 
 // ── Gallery Tab ──
@@ -868,6 +945,48 @@ function parsePersonaRpgStats(personaStats: string): RPGStatsConfig | undefined 
   }
 }
 
+function readPersonaTags(raw: string[] | string | undefined): string[] {
+  if (Array.isArray(raw)) return raw.filter((tag): tag is string => typeof tag === "string");
+  if (!raw?.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((tag): tag is string => typeof tag === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function serializePersonaStatsField(raw: PersonaFormData["personaStats"] | Persona["personaStats"] | undefined): string {
+  if (typeof raw === "string") return raw;
+  if (!raw) return "";
+  try {
+    return JSON.stringify(raw);
+  } catch {
+    return "";
+  }
+}
+
+function serializeSavedStatusOptionsField(raw: string | string[] | undefined): string {
+  if (typeof raw === "string") return raw;
+  return JSON.stringify(Array.isArray(raw) ? raw : []);
+}
+
+function readPersonaConvoBehavior(
+  raw: string | ConvoBehaviorConfig | undefined,
+): ConvoBehaviorConfig | null {
+  if (!raw) return null;
+  if (typeof raw !== "string") {
+    return typeof raw.instruction === "string" ? raw : null;
+  }
+  if (!raw.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as ConvoBehaviorConfig;
+    return parsed && typeof parsed.instruction === "string" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function createCharacterDataFromPersona(formData: PersonaFormData): CharacterData {
   const rpgStats = parsePersonaRpgStats(formData.personaStats);
 
@@ -909,7 +1028,8 @@ function createCharacterDataFromPersona(formData: PersonaFormData): CharacterDat
 export function PersonaEditor() {
   const personaId = useUIStore((s) => s.personaDetailId);
   const closeDetail = useUIStore((s) => s.closePersonaDetail);
-  const { data: allPersonas, isLoading } = usePersonas();
+  const { data: allCharacters } = useCharacters();
+  const { data: rawPersona, isLoading } = usePersona(personaId);
   const createCharacter = useCreateCharacter();
   const updatePersona = useUpdatePersona();
   const uploadCharacterAvatar = useUploadAvatar();
@@ -934,12 +1054,24 @@ export function PersonaEditor() {
   const [saving, setSaving] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const linkedCharacterId = formData?.linkedCharacterId?.trim() || rawPersona?.linkedCharacterId?.trim() || null;
+  const { data: linkedCharacter } = useCharacter(linkedCharacterId);
+  const characterLinkOptions = useMemo(() => readCharacterLinkOptions(allCharacters), [allCharacters]);
   const imageGenerationAvailable =
     Array.isArray(connectionsList) &&
     (connectionsList as Array<{ provider?: string }>).some((connection) => connection.provider === "image_generation");
-
-  // Find the persona from the list
-  const rawPersona = (allPersonas as PersonaRow[] | undefined)?.find((p) => p.id === personaId);
+  const linkedCharacterImportMetadata =
+    linkedCharacter && typeof linkedCharacter === "object" && "extensions" in linkedCharacter
+      ? ((linkedCharacter as { extensions?: Record<string, unknown> }).extensions?.importMetadata as
+          | Record<string, unknown>
+          | undefined) ?? null
+      : null;
+  const linkedCharacterEmbeddedLorebook =
+    linkedCharacterImportMetadata?.embeddedLorebook && typeof linkedCharacterImportMetadata.embeddedLorebook === "object"
+      ? (linkedCharacterImportMetadata.embeddedLorebook as Record<string, unknown>)
+      : null;
+  const linkedCharacterLorebookId =
+    typeof linkedCharacterEmbeddedLorebook?.lorebookId === "string" ? linkedCharacterEmbeddedLorebook.lorebookId : null;
 
   // Parse persona into form data when it first loads (or when switching personas).
   // Important: don't overwrite local unsaved edits if server data refetches (e.g. after avatar upload).
@@ -955,7 +1087,7 @@ export function PersonaEditor() {
     try {
       const raw = rawPersona.avatarCrop;
       if (raw) {
-        const obj = JSON.parse(raw);
+        const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
         // Defensive: accept either the current source-relative shape or the
         // legacy zoom+offset shape. Anything else is silently dropped so a
         // malformed cell can't break the editor with NaN transforms.
@@ -1000,6 +1132,8 @@ export function PersonaEditor() {
       /* ignore — empty / malformed crop just stays null */
     }
 
+    const characterLinks = readPersonaCharacterLinks(rawPersona.characterLinks, rawPersona.linkedCharacterId);
+
     setFormData({
       name: rawPersona.name,
       comment: rawPersona.comment ?? "",
@@ -1016,26 +1150,14 @@ export function PersonaEditor() {
       dialogueColor: rawPersona.dialogueColor ?? "",
       boxColor: rawPersona.boxColor ?? "",
       trackerCardColors: parseTrackerCardColorConfig(rawPersona.trackerCardColors),
-      personaStats: rawPersona.personaStats ?? "",
-      tags: (() => {
-        try {
-          return rawPersona.tags ? JSON.parse(rawPersona.tags) : [];
-        } catch {
-          return [];
-        }
-      })(),
-      savedStatusOptions: rawPersona.savedStatusOptions ?? "[]",
+      personaStats: serializePersonaStatsField(rawPersona.personaStats),
+      tags: readPersonaTags(rawPersona.tags),
+      savedStatusOptions: serializeSavedStatusOptionsField(rawPersona.savedStatusOptions),
       convoDisplayName: rawPersona.convoDisplayName ?? "",
       aboutMe: rawPersona.aboutMe ?? "",
-      convoBehavior: (() => {
-        if (!rawPersona.convoBehavior?.trim()) return null;
-        try {
-          const parsed = JSON.parse(rawPersona.convoBehavior) as ConvoBehaviorConfig;
-          return parsed && typeof parsed.instruction === "string" ? parsed : null;
-        } catch {
-          return null;
-        }
-      })(),
+      characterLinks,
+      linkedCharacterId: getPrimaryPersonaCharacterLinkId(characterLinks),
+      convoBehavior: readPersonaConvoBehavior(rawPersona.convoBehavior),
       avatarCrop: parsedAvatarCrop,
     });
     setAvatarPreview(rawPersona.avatarPath);
@@ -1051,11 +1173,29 @@ export function PersonaEditor() {
     [formatQuotes],
   );
 
+  const updateCharacterLinks = useCallback(
+    (links: Array<{ characterId?: string | null; role?: PersonaCharacterLinkRole | null }>, fallbackPrimaryCharacterId?: string | null) => {
+      const normalized = normalizePersonaCharacterLinkDrafts(links, fallbackPrimaryCharacterId);
+      setFormData((prev) =>
+        prev
+          ? {
+              ...prev,
+              characterLinks: normalized,
+              linkedCharacterId: getPrimaryPersonaCharacterLinkId(normalized),
+            }
+          : prev,
+      );
+      setDirty(true);
+    },
+    [],
+  );
+
   const handleSave = async () => {
     if (!personaId || !formData) return;
     setSaving(true);
     try {
-      const { tags, avatarCrop, convoBehavior, ...rest } = formData;
+      const { tags, avatarCrop, convoBehavior, linkedCharacterId, characterLinks, ...rest } = formData;
+      const normalizedCharacterLinks = normalizePersonaCharacterLinkDrafts(characterLinks, linkedCharacterId);
       await updatePersona.mutateAsync({
         id: personaId,
         ...rest,
@@ -1066,6 +1206,8 @@ export function PersonaEditor() {
         avatarCrop: avatarCrop ? JSON.stringify(avatarCrop) : "",
         // convoBehavior is a JSON-string column; "" means unset.
         convoBehavior: convoBehavior && convoBehavior.instruction?.trim() ? JSON.stringify(convoBehavior) : "",
+        linkedCharacterId: getPrimaryPersonaCharacterLinkId(normalizedCharacterLinks) || null,
+        characterLinks: normalizedCharacterLinks,
       });
       setDirty(false);
     } finally {
@@ -1440,7 +1582,11 @@ export function PersonaEditor() {
                 personaId={personaId}
                 formData={formData}
                 updateField={updateField}
+                updateCharacterLinks={updateCharacterLinks}
                 avatarPreview={avatarPreview}
+                characterLinkOptions={characterLinkOptions}
+                linkedCharacterId={linkedCharacterId}
+                linkedCharacter={linkedCharacter}
               />
             )}
             {activeTab === "card" && (
@@ -1474,6 +1620,23 @@ export function PersonaEditor() {
               <PersonaGalleryTab personaId={personaId} personaName={formData.name} />
             )}
             {activeTab === "stats" && <PersonaStatsTab formData={formData} updateField={updateField} />}
+            {activeTab === "runtime" && (
+              <NarrativeGeneratorTab
+                mode="persona"
+                locked={!linkedCharacterId}
+                subjectId={personaId}
+                subjectName={formData?.name ?? null}
+                subjectDescription={formData?.description ?? null}
+                subjectPersonality={formData?.personality ?? null}
+                subjectScenario={formData?.scenario ?? null}
+                linkedCharacterId={linkedCharacterId}
+                linkedCharacterName={(linkedCharacter as { name?: string } | undefined)?.name ?? linkedCharacterId ?? null}
+                linkedCharacterDescription={(linkedCharacter as { description?: string } | undefined)?.description ?? null}
+                linkedCharacterPersonality={(linkedCharacter as { personality?: string } | undefined)?.personality ?? null}
+                linkedCharacterScenario={(linkedCharacter as { scenario?: string } | undefined)?.scenario ?? null}
+                targetLorebookId={linkedCharacterLorebookId}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -2703,14 +2866,68 @@ function PersonaMetadataTab({
   personaId,
   formData,
   updateField,
+  updateCharacterLinks,
   avatarPreview,
+  characterLinkOptions,
+  linkedCharacterId,
+  linkedCharacter,
 }: {
   personaId: string | null;
   formData: PersonaFormData;
   updateField: <K extends keyof PersonaFormData>(key: K, value: PersonaFormData[K]) => void;
+  updateCharacterLinks: (
+    links: Array<{ characterId?: string | null; role?: PersonaCharacterLinkRole | null }>,
+    fallbackPrimaryCharacterId?: string | null,
+  ) => void;
   avatarPreview: string | null;
+  characterLinkOptions: CharacterLinkOption[];
+  linkedCharacterId: string | null;
+  linkedCharacter: unknown;
 }) {
   const [newTag, setNewTag] = useState("");
+  const [newCharacterLinkId, setNewCharacterLinkId] = useState("");
+  const linkedCharacterIds = useMemo(() => new Set(formData.characterLinks.map((link) => link.characterId)), [formData.characterLinks]);
+  const availableSecondaryLinkOptions = useMemo(
+    () => characterLinkOptions.filter((character) => !linkedCharacterIds.has(character.id)),
+    [characterLinkOptions, linkedCharacterIds],
+  );
+
+  const handlePrimaryLinkedCharacterChange = useCallback(
+    (nextPrimaryId: string) => {
+      const nextLinks = formData.characterLinks.map((link) =>
+        link.role === "primary" ? { ...link, role: "secondary" as const } : link,
+      );
+      updateCharacterLinks(nextLinks, nextPrimaryId || null);
+    },
+    [formData.characterLinks, updateCharacterLinks],
+  );
+
+  const handleAddSecondaryLink = useCallback(() => {
+    const trimmed = newCharacterLinkId.trim();
+    if (!trimmed) return;
+    updateCharacterLinks([...formData.characterLinks, { characterId: trimmed, role: "secondary" }], linkedCharacterId);
+    setNewCharacterLinkId("");
+  }, [formData.characterLinks, linkedCharacterId, newCharacterLinkId, updateCharacterLinks]);
+
+  const handlePromoteLink = useCallback(
+    (characterId: string) => {
+      const nextLinks = formData.characterLinks.map((link) => ({
+        ...link,
+        role: link.characterId === characterId ? ("primary" as const) : ("secondary" as const),
+      }));
+      updateCharacterLinks(nextLinks, characterId);
+    },
+    [formData.characterLinks, updateCharacterLinks],
+  );
+
+  const handleRemoveLink = useCallback(
+    (characterId: string) => {
+      const nextLinks = formData.characterLinks.filter((link) => link.characterId !== characterId);
+      const nextPrimaryId = linkedCharacterId === characterId ? null : linkedCharacterId;
+      updateCharacterLinks(nextLinks, nextPrimaryId);
+    },
+    [formData.characterLinks, linkedCharacterId, updateCharacterLinks],
+  );
 
   const addTag = () => {
     const nextTags = appendNewTags(formData.tags, newTag);
@@ -2831,6 +3048,125 @@ function PersonaMetadataTab({
           />
           <PersonaVersionHistoryPanel personaId={personaId} currentData={formData} currentAvatarPath={avatarPreview} />
         </label>
+        <label className="space-y-1.5 sm:col-span-2">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+            Primary Linked Character{" "}
+            <HelpTooltip text="Persistent HumanOS runtime pairing for this persona. This primary link powers the runtime generator, while the relationship list below lets you keep additional persona-to-character connections." />
+          </span>
+          <select
+            value={formData.linkedCharacterId}
+            onChange={(e) => handlePrimaryLinkedCharacterChange(e.target.value)}
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--secondary)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]/40 focus:ring-1 focus:ring-[var(--primary)]/20"
+          >
+            <option value="">No linked character</option>
+            {characterLinkOptions.map((character) => (
+              <option key={character.id} value={character.id}>
+                {character.name}
+              </option>
+            ))}
+            {formData.linkedCharacterId &&
+            !characterLinkOptions.some((character) => character.id === formData.linkedCharacterId) ? (
+              <option value={formData.linkedCharacterId}>{formData.linkedCharacterId}</option>
+            ) : null}
+          </select>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {linkedCharacterId
+              ? `Runtime pairing currently points to ${linkedCharacter && typeof linkedCharacter === "object" && "name" in linkedCharacter && typeof linkedCharacter.name === "string" ? linkedCharacter.name : linkedCharacterId}.`
+              : "No primary runtime pairing selected yet. You can still keep additional persona-character relationships below without activating one for runtime."}
+          </p>
+        </label>
+
+        <div className="space-y-3 sm:col-span-2">
+          <div className="space-y-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)]">
+              Character Relationships{" "}
+              <HelpTooltip text="View and manage all persisted persona-character relationships. Keep one optional primary link for runtime tools and add secondary links for other important pairings you want the editor to remember." />
+            </span>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              Additional links persist with the persona and are separate from the current runtime primary pairing.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--secondary)]/70 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <select
+                value={newCharacterLinkId}
+                onChange={(e) => setNewCharacterLinkId(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm outline-none focus:border-[var(--primary)]/40 focus:ring-1 focus:ring-[var(--primary)]/20"
+              >
+                <option value="">Add another linked character…</option>
+                {availableSecondaryLinkOptions.map((character) => (
+                  <option key={character.id} value={character.id}>
+                    {character.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleAddSecondaryLink}
+                disabled={!newCharacterLinkId.trim()}
+                className="mari-chrome-accent-surface mari-accent-animated inline-flex items-center justify-center gap-1 rounded-xl px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus size="0.875rem" />
+                Add relationship
+              </button>
+            </div>
+
+            {formData.characterLinks.length > 0 ? (
+              <div className="space-y-2">
+                {formData.characterLinks.map((link) => {
+                  const displayName = findCharacterLinkOptionName(characterLinkOptions, link.characterId);
+                  const isPrimary = link.role === "primary";
+                  return (
+                    <div
+                      key={link.characterId}
+                      className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-medium text-[var(--foreground)]">{displayName}</span>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wide",
+                              isPrimary
+                                ? "bg-[var(--primary)]/15 text-[var(--primary)]"
+                                : "bg-[var(--secondary)] text-[var(--muted-foreground)]",
+                            )}
+                          >
+                            {isPrimary ? "Primary" : "Secondary"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-[var(--muted-foreground)]">{link.characterId}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!isPrimary ? (
+                          <button
+                            type="button"
+                            onClick={() => handlePromoteLink(link.characterId)}
+                            className="mari-chrome-control mari-chrome-control--compact"
+                          >
+                            Set as primary
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLink(link.characterId)}
+                          className="mari-chrome-control mari-chrome-control--compact mari-chrome-control--danger"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] px-3 py-4 text-sm text-[var(--muted-foreground)]">
+                No persona-character relationships saved yet.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -2910,6 +3246,8 @@ const PERSONA_VERSION_COMPARE_FIELDS: Array<{ key: keyof PersonaCardSnapshot; la
   { key: "name", label: "Name" },
   { key: "creator", label: "Creator" },
   { key: "creatorNotes", label: "Creator Notes" },
+  { key: "linkedCharacterId", label: "Primary Linked Character" },
+  { key: "characterLinks", label: "Character Relationships" },
   { key: "description", label: "Description" },
   { key: "personality", label: "Personality" },
   { key: "scenario", label: "Scenario" },
@@ -2948,6 +3286,8 @@ function buildCurrentPersonaSnapshot(formData: PersonaFormData): PersonaCardSnap
     savedStatusOptions: formData.savedStatusOptions,
     convoDisplayName: formData.convoDisplayName,
     aboutMe: formData.aboutMe,
+    linkedCharacterId: formData.linkedCharacterId.trim(),
+    characterLinks: JSON.stringify(formData.characterLinks),
     convoBehavior:
       formData.convoBehavior && formData.convoBehavior.instruction?.trim()
         ? JSON.stringify(formData.convoBehavior)
@@ -2975,7 +3315,7 @@ function formatPersonaVersionValue(data: PersonaCardSnapshot, key: keyof Persona
   const value = data[key];
   if (typeof value !== "string") return "";
   if (!value.trim()) return "";
-  if (key === "avatarCrop" || key === "trackerCardColors" || key === "personaStats" || key === "tags") {
+  if (key === "avatarCrop" || key === "trackerCardColors" || key === "personaStats" || key === "tags" || key === "characterLinks") {
     try {
       return JSON.stringify(JSON.parse(value), null, 2);
     } catch {
