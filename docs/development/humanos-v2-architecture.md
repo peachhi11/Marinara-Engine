@@ -52,7 +52,7 @@ Runtime is mutable. It captures what is true now in the active chat and can be c
 
 Character architecture is durable. It should not be rewritten every time the scene changes. Runtime commit is therefore gated by the server-selected canonical assistant message and swipe, plus a fingerprinted turn snapshot.
 
-The runtime surface is also allowed to act as a narrative generator surface. In that mode it should produce a one-page story projection, not a raw state dump. On the character page it can seed a runtime arc from character truth and scenario context. On the persona page it stays locked until a character is linked, then blends character truth, persona truth, runtime truth, and relationship-save state into a reusable arc overview.
+The runtime surface is also allowed to act as a narrative generator surface. In that mode it should produce a one-page story projection, not a raw state dump. On the character page it can seed a runtime arc from character truth and scenario context. On the persona page it stays locked until a character is linked, then blends character truth, persona truth, runtime truth, and relationship-save state into a reusable arc overview. The default path is canon-fit first; ALT is the canon-compatible alternate arc, and BRANCH is the deliberate hard-divergence arc.
 
 ## Psychological underpinnings
 

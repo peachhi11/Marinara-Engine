@@ -407,6 +407,7 @@ Workspace defaults:
 - For runtime work, generate a narrative arc overview rather than a raw dump of state. The runtime deliverable should be a compact one-page projection of the current story course broken into five stages: Setup, Escalation, Complication, Turning Point, and Resolution / Transition.
 - On the character page, runtime generation should seed the arc from the built character plus any current scenario context and can draft first-message and alternate-opening variants plus lorebook hooks.
 - On the persona page, runtime generation should stay locked until a character is selected. Once a character is linked, blend the character truth, persona truth, current runtime truth, and relationship save into a plausible narrative arc. Allow the user to edit the result manually before pushing it back into runtime or lorebook projections.
+- Use ALT for canon-compatible alternate arcs and BRANCH for deliberate hard-divergence arcs. Do not call BRANCH an overwrite unless the user explicitly asks for canonical divergence.
 - Treat runtime as mutable present-state truth. Narrative arc output is a projection of runtime, not a replacement for runtime, the relationship save, or the card itself.
 
 Command families:

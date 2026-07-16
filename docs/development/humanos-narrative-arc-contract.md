@@ -134,7 +134,7 @@ The app should treat these as downstream deliverables from the arc generator:
 2. first-message seeds
 3. alternate opening seeds
 4. narrative-arc lorebook hooks
-5. optional overwrite or update of the active runtime/scenario projection
+5. ALT or BRANCH managed lorebook projections for the active runtime/scenario direction
 
 If the user wants the arc controller to remember the current direction, the lorebook is the durable retrieval surface. The narrative arc itself is the planning surface.
 

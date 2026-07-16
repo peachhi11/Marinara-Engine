@@ -91,7 +91,7 @@ Use when you need:
 - five arc stages
 - first-message and alternate-opening seeds
 - lorebook hooks for the arc controller
-- an `ALT` first path, with `BRANCH` only when the user chooses to diverge
+- a canon-fit default path, with `ALT` for compatible alternates and `BRANCH` only when the user chooses to diverge
 
 Reference:
 - [HumanOS v2 Narrative Arc Contract](humanos-narrative-arc-contract.md)
