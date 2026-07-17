@@ -9,6 +9,7 @@ The key idea is simple: runtime is still present-state truth, but the UI that us
 The narrative generator surface should:
 
 - turn character truth, persona truth, runtime truth, and relationship-save state into a one-page arc overview
+- apply relationship-framework interpretation without forcing a universal numeric gate
 - show the arc as five stages
 - expose the generated text for manual editing
 - try to weave the persona into existing canon first

@@ -15,6 +15,7 @@ Runtime holds the things that are true right now:
 - fatigue
 - recent pressure
 - active relationship state
+- relationship-framework interpretation
 - unresolved commitments
 - temporary status markers
 
@@ -36,7 +37,7 @@ Runtime should let the system say:
 - what the current state means for the next reply
 - what should be updated after the scene advances
 
-## Dynamic metrics
+## Dynamic Metrics and Relationship Interpretation
 
 Not every runtime metric is universal. A metric may change depending on:
 
@@ -55,6 +56,8 @@ Examples:
 - a focus or attention metric may matter more for an ADHD-flavored persona than for a disciplined warrior
 
 The runtime contract should therefore describe metrics as scoped, not universal. Each metric needs a clear owner, a clear interpretation, and a clear update rule.
+
+Relationship state follows the same rule. Runtime may record the current relationship temperature, but the relationship framework owns the qualitative interpretation of relationship type, trust strands, modifiers, and plausible next beats. This avoids forcing every relationship into the same numeric ladder.
 
 ## Update contract
 
@@ -112,3 +115,15 @@ The runtime layer should understand that dynamic metrics vary with:
 - whether the current scene is a first meeting, a slow burn, a rupture, a repair, or a settled phase
 
 That keeps the system from acting like every relationship follows the same fixed staircase.
+
+Use the [HumanOS v2 Relationship Framework](humanos-relationship-framework.md) when runtime needs to describe relationship state. The recommended model is a qualitative trust web:
+
+- practical trust
+- emotional trust
+- moral trust
+- physical trust
+- social trust
+- romantic trust
+- narrative trust
+
+These strands can move independently. A pair may trust each other in combat but not emotionally, feel attraction without moral trust, or share domestic ease while still avoiding an old rupture.

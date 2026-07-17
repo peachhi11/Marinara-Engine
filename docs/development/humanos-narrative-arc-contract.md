@@ -54,6 +54,7 @@ The arc generator blends:
 - character truth
 - persona truth
 - current runtime truth
+- relationship-framework interpretation
 - relationship-save state
 - scenario context
 - active lorebook entries when relevant
@@ -65,6 +66,8 @@ That blend is what makes the arc useful. It should understand that runtime press
 - the scene pressure
 - the point in the relationship
 - the mode of play
+
+Relationship interpretation should stay qualitative. The arc generator may use trope-coded relationship language such as "reluctant allies," "slow-burn friends to lovers," "rivals with unresolved respect," or "rupture and repair" when that language helps explain what is plausible next. It should not require a universal numeric gate before a relationship beat can happen.
 
 ## Output shape
 
@@ -127,6 +130,7 @@ The narrative arc may produce:
 - alternate first messages
 - a narrative arc lorebook
 - updates to an existing active lorebook
+- relationship-framework notes for the active pairing
 
 The app should treat these as downstream deliverables from the arc generator:
 

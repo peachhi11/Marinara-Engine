@@ -60,6 +60,7 @@ Keep these in Marinara when they are primarily about this product's implementati
 | World-truth and world-state boundary rules | HumanOS-CCv2 `docs/world-boundaries` | app-specific world state, scenario, and storage implementation |
 | Contributor-facing authoring workflow | HumanOS-CCv2 `docs/authoring` | product-specific editors, prompts, and creation flows |
 | Relationship-save boundaries, commit-flow guidance, and managed projection rules | HumanOS-CCv2 `docs/relationship-memory` | `docs/development/generalized-proposed-patch-commit-system.md` and server implementation |
+| Relationship framework and trust-web interpretation | HumanOS-CCv2 when generalized | `docs/development/humanos-relationship-framework.md` while Marinara-specific |
 | Evaluation scorecards and reviewer guidance | HumanOS-CCv2 `evaluation/scorecards` | ordered review wiring, reviewer agents, and product-specific prompts |
 | Reviewer operating modes and scope-selection rules | HumanOS-CCv2 `evaluation/reviewer-modes` | product-specific review routing, UI modes, and trigger mapping |
 | Narrative generator UI behavior | framework implications may be documented canonically | Marinara UI and routes |
@@ -79,6 +80,7 @@ These remain implementation-side or app-specific today:
 - `docs/development/humanos-v2-architecture.md`
 - `docs/development/humanos-architecture-index.md`
 - `docs/development/humanos-narrative-generator-ui.md`
+- `docs/development/humanos-relationship-framework.md`
 - `docs/development/generalized-proposed-patch-commit-system.md`
 - `docs/lorebooks/linking-to-characters.md`
 

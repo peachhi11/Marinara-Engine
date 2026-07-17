@@ -15,9 +15,11 @@ Use when you need:
 - durable character truth
 - appearance
 - personality
+- cognition and psychology
 - backstory
 - relationship tendencies
 - speech style
+- character-use overview
 
 Reference:
 - [HumanOS v2 Character Card Template](humanos-character-card-template.md)
@@ -52,6 +54,21 @@ Use when you need:
 Reference:
 - [HumanOS v2 Runtime Contract](humanos-runtime-contract.md)
 - [HumanOS v2 Narrative Arc Contract](humanos-narrative-arc-contract.md)
+
+### Relationship Framework
+
+Interpretive relationship logic for a specific character/persona pairing.
+
+Use when you need:
+
+- relationship type
+- trope-coded relational language
+- qualitative trust strands
+- phase-aware plausibility checks
+- guidance for what would feel earned, premature, or divergent
+
+Reference:
+- [HumanOS v2 Relationship Framework](humanos-relationship-framework.md)
 
 ### Lorebook
 
@@ -117,15 +134,17 @@ Reference:
 1. The **character** card defines who the character is in a durable sense.
 2. The **persona** card defines who the user is in the chat.
 3. The **runtime** contract records what is true right now.
-4. The **lorebook** stores conditional depth that should only appear when triggered.
-5. The **narrative arc** projects the current story direction from runtime and relationship context.
-6. The **relationship save** preserves the evolving history between one character and one persona.
-7. The **narrative generator UI** is the user-facing surface that turns runtime projection into editable deliverables.
+4. The **relationship framework** interprets what kind of relationship the current pairing can plausibly support.
+5. The **lorebook** stores conditional depth that should only appear when triggered.
+6. The **narrative arc** projects the current story direction from runtime and relationship context.
+7. The **relationship save** preserves the evolving history between one character and one persona.
+8. The **narrative generator UI** is the user-facing surface that turns runtime projection into editable deliverables.
 
 If a fact is durable, keep it in the character or persona layer.
 If it is conditional, keep it in a lorebook.
 If it is temporary, keep it in runtime.
 If it is relationship history, keep it in the relationship save.
+If it is relationship interpretation, keep it in the relationship framework.
 
 ## Design rules
 
@@ -135,6 +154,7 @@ If it is relationship history, keep it in the relationship save.
 - Do not make persona and character fields interchangeable.
 - Do not treat the relationship save as a card replacement.
 - Do not let the runtime contract become a second character card.
+- Do not turn the relationship framework into a universal numeric gate.
 - Do not let the narrative arc become a replacement for runtime, lorebook, or relationship save.
 - Do not let the narrative generator UI become a separate truth source. It is a view and edit surface for the runtime projection.
 
@@ -146,3 +166,4 @@ If it is relationship history, keep it in the relationship save.
 - HumanOS runtime routes: `packages/server/src/routes/humanos-v2.routes.ts`
 - HumanOS runtime schema and target identity: `packages/server/src/services/storage/humanos-runtime-governed.ts`
 - Relationship save system: `docs/development/generalized-proposed-patch-commit-system.md`
+- Relationship framework: `docs/development/humanos-relationship-framework.md`

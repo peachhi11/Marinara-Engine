@@ -54,7 +54,9 @@ Runtime is mutable. It captures what is true now in the active chat and can be c
 
 Character architecture is durable. It should not be rewritten every time the scene changes. Runtime commit is therefore gated by the server-selected canonical assistant message and swipe, plus a fingerprinted turn snapshot.
 
-The runtime surface is also allowed to act as a narrative generator surface. In that mode it should produce a one-page story projection, not a raw state dump. On the character page it can seed a runtime arc from character truth and scenario context. On the persona page it stays locked until a character is linked, then blends character truth, persona truth, runtime truth, and relationship-save state into a reusable arc overview. The default path is canon-fit first; ALT is the canon-compatible alternate arc, and BRANCH is the deliberate hard-divergence arc.
+The runtime surface is also allowed to act as a narrative generator surface. In that mode it should produce a one-page story projection, not a raw state dump. On the character page it can seed a runtime arc from character truth and scenario context. On the persona page it stays locked until a character is linked, then blends character truth, persona truth, runtime truth, relationship-framework interpretation, and relationship-save state into a reusable arc overview. The default path is canon-fit first; ALT is the canon-compatible alternate arc, and BRANCH is the deliberate hard-divergence arc.
+
+Relationship interpretation sits beside runtime as a qualitative framework, not as another durable card. It describes the current relationship type, modifiers, trust strands, and plausible next beats for one character/persona pairing. Runtime records present-state evidence; the relationship framework explains what that evidence means for relational plausibility.
 
 ## Psychological underpinnings
 
@@ -65,6 +67,7 @@ In practice, the architecture gives the system places to store:
 - values and priorities
 - wounds and defenses
 - relational expectations
+- relationship type and trust strands
 - speech style
 - growth and regression tendencies
 - current pressure and recent state
@@ -84,6 +87,7 @@ HumanOS uses a few linked modules that work together:
 - `packages/server/src/services/agents/humanos-dependency-graph.ts` plans deterministic agent dependency waves
 - `packages/server/src/services/generation/humanos-publication-policy.ts` enforces ordered review and supported publication modes
 - `packages/server/src/services/generation/humanos-turn-snapshot.ts` fingerprints the canonical turn context used for runtime commits
+- `docs/development/humanos-relationship-framework.md` defines the qualitative relationship layer that runtime and narrative projection can consult
 
 These pieces are intentionally linked by authority:
 
@@ -99,6 +103,7 @@ The architecture affects how Marinara behaves end to end:
 
 - persona and character content can be refined without mutating runtime state
 - runtime state can be committed without overwriting reusable architecture
+- relationship type can guide projection without becoming a universal numeric gate
 - deterministic agents can depend on earlier agent outputs without forming cycles
 - publication can be held back when review is incomplete or a canonical anchor is missing
 - docs for characters, personas, and lorebooks can describe the right layer instead of forcing everything into card fields
@@ -140,6 +145,7 @@ The runtime commit tool requires a server-owned canonical assistant anchor and w
 - [HumanOS v2 Character Card Template](humanos-character-card-template.md)
 - [HumanOS v2 Persona Template](humanos-persona-template.md)
 - [HumanOS v2 Runtime Contract](humanos-runtime-contract.md)
+- [HumanOS v2 Relationship Framework](humanos-relationship-framework.md)
 - [HumanOS v2 Narrative Arc Contract](humanos-narrative-arc-contract.md)
 - [HumanOS v2 Architecture Index](humanos-architecture-index.md)
 - [Generalized Proposed Patch Commit System](generalized-proposed-patch-commit-system.md)
