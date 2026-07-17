@@ -17,6 +17,8 @@ Current branch-owned framework surfaces:
 - `architecture/contracts` — runtime and narrative contracts
 - `architecture/templates` — reusable character and persona templates
 - `docs/memory-retrieval` — lorebook-linking and retrieval-boundary guidance
+- `evaluation/scorecards` — evaluation scorecards and reviewer guidance
+- `docs/relationship-memory` — relationship-save and managed-projection boundaries
 
 ## What belongs in HumanOS-CCv2
 
@@ -49,7 +51,8 @@ Keep these in Marinara when they are primarily about this product's implementati
 | Runtime and narrative contracts | HumanOS-CCv2 `architecture/contracts` | implementation of those contracts |
 | Character and persona templates | HumanOS-CCv2 `architecture/templates` | editor fields and app flows |
 | Lorebook-linking boundaries | HumanOS-CCv2 `docs/memory-retrieval` | UI guide in `docs/lorebooks/linking-to-characters.md` |
-| Relationship-save authority kernel | future canonical framework write-up if generalized | `docs/development/generalized-proposed-patch-commit-system.md` and server implementation |
+| Relationship-save boundaries and managed projection rules | HumanOS-CCv2 `docs/relationship-memory` | `docs/development/generalized-proposed-patch-commit-system.md` and server implementation |
+| Evaluation scorecards and reviewer guidance | HumanOS-CCv2 `evaluation/scorecards` | ordered review wiring, reviewer agents, and product-specific prompts |
 | Narrative generator UI behavior | framework implications may be documented canonically | Marinara UI and routes |
 | Professor Mari behavior | only if generalized beyond Marinara | Marinara-specific docs and code |
 
