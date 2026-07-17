@@ -17,6 +17,8 @@ Current branch-owned framework surfaces:
 - `architecture/contracts` — runtime and narrative contracts
 - `architecture/templates` — reusable character and persona templates
 - `docs/memory-retrieval` — lorebook-linking and retrieval-boundary guidance
+- `docs/world-boundaries` — world-truth and world-state boundary guidance
+- `docs/authoring` — contributor-facing HumanOS authoring workflow guidance
 - `evaluation/scorecards` — evaluation scorecards and reviewer guidance
 - `docs/relationship-memory` — relationship-save, commit-flow, and managed-projection boundaries
 
@@ -29,6 +31,8 @@ Keep these in the HumanOS repo when they are meant as canonical framework materi
 - reusable contracts
 - reusable templates
 - retrieval ownership rules
+- world and setting boundary rules
+- authoring workflow and placement guidance
 - reviewer or evaluation rules that are not specific to one app
 
 ## What belongs in Marinara
@@ -51,6 +55,8 @@ Keep these in Marinara when they are primarily about this product's implementati
 | Runtime and narrative contracts | HumanOS-CCv2 `architecture/contracts` | implementation of those contracts |
 | Character and persona templates | HumanOS-CCv2 `architecture/templates` | editor fields and app flows |
 | Lorebook-linking boundaries | HumanOS-CCv2 `docs/memory-retrieval` | UI guide in `docs/lorebooks/linking-to-characters.md` |
+| World-truth and world-state boundary rules | HumanOS-CCv2 `docs/world-boundaries` | app-specific world state, scenario, and storage implementation |
+| Contributor-facing authoring workflow | HumanOS-CCv2 `docs/authoring` | product-specific editors, prompts, and creation flows |
 | Relationship-save boundaries, commit-flow guidance, and managed projection rules | HumanOS-CCv2 `docs/relationship-memory` | `docs/development/generalized-proposed-patch-commit-system.md` and server implementation |
 | Evaluation scorecards and reviewer guidance | HumanOS-CCv2 `evaluation/scorecards` | ordered review wiring, reviewer agents, and product-specific prompts |
 | Narrative generator UI behavior | framework implications may be documented canonically | Marinara UI and routes |
