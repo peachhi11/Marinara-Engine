@@ -20,6 +20,7 @@ Current branch-owned framework surfaces:
 - `docs/world-boundaries` — world-truth and world-state boundary guidance
 - `docs/authoring` — contributor-facing HumanOS authoring workflow guidance
 - `evaluation/scorecards` — evaluation scorecards and reviewer guidance
+- `evaluation/reviewer-modes` — reviewer operating modes and scope-selection guidance
 - `docs/relationship-memory` — relationship-save, commit-flow, and managed-projection boundaries
 
 ## What belongs in HumanOS-CCv2
@@ -34,6 +35,7 @@ Keep these in the HumanOS repo when they are meant as canonical framework materi
 - world and setting boundary rules
 - authoring workflow and placement guidance
 - reviewer or evaluation rules that are not specific to one app
+- reviewer operating modes and scope-selection rules
 
 ## What belongs in Marinara
 
@@ -59,6 +61,7 @@ Keep these in Marinara when they are primarily about this product's implementati
 | Contributor-facing authoring workflow | HumanOS-CCv2 `docs/authoring` | product-specific editors, prompts, and creation flows |
 | Relationship-save boundaries, commit-flow guidance, and managed projection rules | HumanOS-CCv2 `docs/relationship-memory` | `docs/development/generalized-proposed-patch-commit-system.md` and server implementation |
 | Evaluation scorecards and reviewer guidance | HumanOS-CCv2 `evaluation/scorecards` | ordered review wiring, reviewer agents, and product-specific prompts |
+| Reviewer operating modes and scope-selection rules | HumanOS-CCv2 `evaluation/reviewer-modes` | product-specific review routing, UI modes, and trigger mapping |
 | Narrative generator UI behavior | framework implications may be documented canonically | Marinara UI and routes |
 | Professor Mari behavior | only if generalized beyond Marinara | Marinara-specific docs and code |
 
