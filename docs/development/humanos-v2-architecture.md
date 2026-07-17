@@ -1,5 +1,7 @@
 # HumanOS v2 Architecture
 
+This document describes Marinara Engine's current HumanOS integration. For canonical framework docs, templates, contracts, and retrieval-boundary guidance, see [HumanOS v2 Integration Map for Marinara Engine](humanos-integration-map.md).
+
 HumanOS v2 is Marinara Engine's architecture for behaviorally coherent characters and user personas. It keeps durable identity, story context, and mutable runtime state separate so the app can reason about each layer without collapsing them into one blob of prompt text.
 
 ## What HumanOS v2 is for
@@ -133,6 +135,7 @@ The runtime commit tool requires a server-owned canonical assistant anchor and w
 
 ## What to read next
 
+- [HumanOS v2 Integration Map for Marinara Engine](humanos-integration-map.md)
 - [Architecture Map (Developers)](architecture-map.md)
 - [HumanOS v2 Character Card Template](humanos-character-card-template.md)
 - [HumanOS v2 Persona Template](humanos-persona-template.md)

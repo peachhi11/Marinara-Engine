@@ -2,6 +2,8 @@
 
 This index ties the main HumanOS surfaces together so contributors can find the right layer quickly.
 
+For the repo boundary between canonical HumanOS framework material and Marinara-specific implementation, see [HumanOS v2 Integration Map for Marinara Engine](humanos-integration-map.md).
+
 ## Surfaces
 
 ### Character
