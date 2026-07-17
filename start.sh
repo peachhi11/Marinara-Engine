@@ -122,10 +122,16 @@ if [ -d ".git" ]; then
     echo "  [..] Checking for updates..."
     OLD_HEAD=$(git rev-parse HEAD 2>/dev/null)
     CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || true)
-    TARGET_BRANCH="main"
-    if [ "$CURRENT_BRANCH" = "staging" ]; then
-        TARGET_BRANCH="staging"
+    TARGET_UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null || true)
+    TARGET_REF=""
+    TARGET_BRANCH=""
+    TARGET_REMOTE=""
+    if [ -n "$TARGET_UPSTREAM" ]; then
+        TARGET_REF="$TARGET_UPSTREAM"
+        TARGET_REMOTE="${TARGET_UPSTREAM%%/*}"
+        TARGET_BRANCH="${TARGET_UPSTREAM#*/}"
     elif [ -z "$CURRENT_BRANCH" ]; then
+        TARGET_REMOTE="origin"
         git fetch origin \
             "+refs/heads/main:refs/remotes/origin/main" \
             "+refs/heads/staging:refs/remotes/origin/staging" \
@@ -133,14 +139,22 @@ if [ -d ".git" ]; then
         if git merge-base --is-ancestor HEAD origin/staging 2>/dev/null \
             && ! git merge-base --is-ancestor HEAD origin/main 2>/dev/null; then
             TARGET_BRANCH="staging"
+        else
+            TARGET_BRANCH="main"
         fi
-    fi
-    TARGET_REF="origin/${TARGET_BRANCH}"
-    if ! git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" --quiet 2>/dev/null; then
-        echo "  [WARN] Could not check for updates (no internet?). Continuing with current version."
-    elif [ "$OLD_HEAD" = "$(git rev-parse "$TARGET_REF" 2>/dev/null || true)" ]; then
-        echo "  [OK] Already up to date"
+        TARGET_REF="${TARGET_REMOTE}/${TARGET_BRANCH}"
+    elif [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ] || [ "$CURRENT_BRANCH" = "staging" ]; then
+        TARGET_REMOTE="origin"
+        TARGET_BRANCH="$CURRENT_BRANCH"
+        TARGET_REF="${TARGET_REMOTE}/${TARGET_BRANCH}"
     else
+        echo "  [OK] Skipping auto-update on ${CURRENT_BRANCH} (no upstream tracking branch configured)"
+    fi
+    if [ -n "$TARGET_REF" ] && ! git fetch "$TARGET_REMOTE" "+refs/heads/${TARGET_BRANCH}:refs/remotes/${TARGET_REMOTE}/${TARGET_BRANCH}" --quiet 2>/dev/null; then
+        echo "  [WARN] Could not check for updates (no internet?). Continuing with current version."
+    elif [ -n "$TARGET_REF" ] && [ "$OLD_HEAD" = "$(git rev-parse "$TARGET_REF" 2>/dev/null || true)" ]; then
+        echo "  [OK] Already up to date"
+    elif [ -n "$TARGET_REF" ]; then
         TARGET_HEAD=$(git rev-parse "$TARGET_REF" 2>/dev/null || true)
         # Stash local changes, including untracked non-ignored files, so the update doesn't fail
         STASHED=0
