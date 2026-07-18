@@ -38,7 +38,7 @@ The UI uses a Discord-inspired three-column design managed by `components/layout
 
 ### Navigation
 
-Navigation is state-driven. There is no URL router. The `stores/ui.store.ts` Zustand store controls what renders:
+Navigation is state-driven. There's no URL router. The `stores/ui.store.ts` Zustand store controls what renders:
 
 | Navigation target      | Store field          | Trigger function                                  |
 | ---------------------- | -------------------- | ------------------------------------------------- |
@@ -77,7 +77,7 @@ The only persisted store (localStorage via the Zustand `persist` middleware). It
 - Behavior: `confirmBeforeDelete`, `enterToSendRP`, `enterToSendConvo`, `weatherEffects`, and `guideGenerations`.
 - Navigation: `rightPanel`, `rightPanelOpen`, `sidebarOpen`, `settingsTab`, all `*DetailId` fields, and `modal`.
 
-Synced custom themes are not stored in `ui.store.ts`. They are fetched from the server through React Query and mirrored across devices connected to the same Marinara instance.
+Synced custom themes aren't stored in `ui.store.ts`. They're fetched from the server through React Query and mirrored across devices connected to the same Marinara instance.
 
 #### `chat.store.ts`: chat runtime
 
@@ -602,7 +602,7 @@ Agents produce typed results that the frontend handles. The `AgentResultType` un
 
 ### Conversation mode
 
-Plain dialogue with one or more AI characters. Characters can have different statuses (online, idle, do not disturb, offline) that influence response timing and style. Built-in agents are added per chat rather than enabled globally.
+Plain dialogue with one or more AI characters. Characters can have different statuses (online, idle, don't disturb, offline) that influence response timing and style. Built-in agents are added per chat rather than enabled globally.
 
 ### Roleplay mode
 

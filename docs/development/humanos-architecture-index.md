@@ -12,14 +12,14 @@ Stable story identity for an AI character.
 
 Use when you need:
 
-- durable character truth
-- appearance
-- personality
-- cognition and psychology
-- backstory
-- relationship tendencies
-- speech style
-- character-use overview
+- Durable character truth
+- Appearance
+- Personality
+- Cognition and psychology
+- Backstory
+- Relationship tendencies
+- Speech style
+- Character-use overview
 
 Reference:
 - [HumanOS v2 Character Card Template](humanos-character-card-template.md)
@@ -30,11 +30,11 @@ Stable user-controlled identity for the chat participant.
 
 Use when you need:
 
-- user identity
-- persona appearance
-- personality
-- social style
-- scenario context
+- User identity
+- Persona appearance
+- Personality
+- Social style
+- Scenario context
 
 Reference:
 - [HumanOS v2 Persona Template](humanos-persona-template.md)
@@ -45,11 +45,11 @@ Mutable present-state truth for the active chat.
 
 Use when you need:
 
-- current scene state
-- active pressure
-- recent changes
-- dynamic metrics
-- relationship stage tracking
+- Current scene state
+- Active pressure
+- Recent changes
+- Dynamic metrics
+- Relationship stage tracking
 
 Reference:
 - [HumanOS v2 Runtime Contract](humanos-runtime-contract.md)
@@ -61,25 +61,25 @@ Interpretive relationship logic for a specific character/persona pairing.
 
 Use when you need:
 
-- relationship type
-- trope-coded relational language
-- qualitative trust strands
-- phase-aware plausibility checks
-- guidance for what would feel earned, premature, or divergent
+- Relationship type
+- Trope-coded relational language
+- Qualitative trust strands
+- Phase-aware plausibility checks
+- Guidance for what would feel earned, premature, or divergent
 
 Reference:
 - [HumanOS v2 Relationship Framework](humanos-relationship-framework.md)
 
 ### Lorebook
 
-Retrieval-only depth for conditional facts that should not live in the always-on card.
+Retrieval-only depth for conditional facts that shouldn't live in the always-on card.
 
 Use when you need:
 
-- durable conditional depth
-- secondary relationships
-- hidden context that only matters in some scenes
-- compact retrieval entries
+- Durable conditional depth
+- Secondary relationships
+- Hidden context that only matters in some scenes
+- Compact retrieval entries
 
 Reference:
 - [Linking Lorebooks to Characters and Personas](../lorebooks/linking-to-characters.md)
@@ -91,11 +91,11 @@ Chat-bound relationship history between a specific character and a specific pers
 
 Use when you need:
 
-- permanent relationship progression
-- milestones
-- checkpoint lineage
-- canonical evidence references
-- chat-local relationship continuity
+- Permanent relationship progression
+- Milestones
+- Checkpoint lineage
+- Canonical evidence references
+- Chat-local relationship continuity
 
 Reference:
 - [Generalized Proposed Patch Commit System](generalized-proposed-patch-commit-system.md)
@@ -106,11 +106,11 @@ Readable story projection for the current character/persona pairing and runtime 
 
 Use when you need:
 
-- a one-page story overview
-- five arc stages
-- first-message and alternate-opening seeds
-- lorebook hooks for the arc controller
-- a canon-fit default path, with `ALT` for compatible alternates and `BRANCH` only when the user chooses to diverge
+- A one-page story overview
+- Five arc stages
+- First-message and alternate-opening seeds
+- Lorebook hooks for the arc controller
+- A canon-fit default path, with `ALT` for compatible alternates and `BRANCH` only when the user chooses to diverge
 
 Reference:
 - [HumanOS v2 Narrative Arc Contract](humanos-narrative-arc-contract.md)
@@ -121,10 +121,10 @@ Editable runtime projection surface for generating and revising the narrative ar
 
 Use when you need:
 
-- a user-facing runtime generation tab
-- locking behavior until a persona is linked to a character
-- editable arc output before commit
-- downstream draft generation for first messages and lorebook hooks
+- A user-facing runtime generation tab
+- Locking behavior until a persona is linked to a character
+- Editable arc output before commit
+- Downstream draft generation for first messages and lorebook hooks
 
 Reference:
 - [HumanOS v2 Narrative Generator UI](humanos-narrative-generator-ui.md)
@@ -148,15 +148,15 @@ If it is relationship interpretation, keep it in the relationship framework.
 
 ## Design rules
 
-- Do not mix runtime state into card truth.
-- Do not put always-active biography into lorebooks.
-- Do not let story binding overwrite character truth.
-- Do not make persona and character fields interchangeable.
-- Do not treat the relationship save as a card replacement.
-- Do not let the runtime contract become a second character card.
-- Do not turn the relationship framework into a universal numeric gate.
-- Do not let the narrative arc become a replacement for runtime, lorebook, or relationship save.
-- Do not let the narrative generator UI become a separate truth source. It is a view and edit surface for the runtime projection.
+- Don't mix runtime state into card truth.
+- Don't put always-active biography into lorebooks.
+- Don't let story binding overwrite character truth.
+- Don't make persona and character fields interchangeable.
+- Don't treat the relationship save as a card replacement.
+- Don't let the runtime contract become a second character card.
+- Don't turn the relationship framework into a universal numeric gate.
+- Don't let the narrative arc become a replacement for runtime, lorebook, or relationship save.
+- Don't let the narrative generator UI become a separate truth source. It's a view and edit surface for the runtime projection.
 
 ## Code anchors
 

@@ -8,14 +8,14 @@ The key idea is simple: runtime is still present-state truth, but the UI that us
 
 The narrative generator surface should:
 
-- turn character truth, persona truth, runtime truth, and relationship-save state into a one-page arc overview
-- apply relationship-framework interpretation without forcing a universal numeric gate
-- show the arc as five stages
-- expose the generated text for manual editing
-- try to weave the persona into existing canon first
-- offer an explicit choice between `ALT` and `BRANCH` when the user does not want the default canonical fit
-- let users push the result into runtime projection, a lorebook update, or a scenario route
-- support repeated regeneration after the current arc has played out
+- Turn character truth, persona truth, runtime truth, and relationship-save state into a one-page arc overview
+- Apply relationship-framework interpretation without forcing a universal numeric gate
+- Show the arc as five stages
+- Expose the generated text for manual editing
+- Try to weave the persona into existing canon first
+- Offer an explicit choice between `ALT` and `BRANCH` when the user doesn't want the default canonical fit
+- Let users push the result into runtime projection, a lorebook update, or a scenario route
+- Support repeated regeneration after the current arc has played out
 
 ## Entry points
 
@@ -25,23 +25,23 @@ The same generator can be surfaced from both the character editor and the person
 
 When the user opens runtime from a character card:
 
-- the generator starts from the built character
-- current scenario context is folded in if available
-- the result becomes a runtime scenario projection that tries to match canon
-- the generator can draft first-message and alternate-first-message variants
-- the generator can draft narrative-arc lorebook hooks for the arc controller
+- The generator starts from the built character
+- Current scenario context is folded in if available
+- The result becomes a runtime scenario projection that tries to match canon
+- The generator can draft first-message and alternate-first-message variants
+- The generator can draft narrative-arc lorebook hooks for the arc controller
 - `ALT` is the canon-compatible alternate path
-- `BRANCH` is the hard divergence path when canon fit is not the desired outcome
+- `BRANCH` is the hard divergence path when canon fit isn't the desired outcome
 
 ### Persona editor entry
 
 When the user opens runtime from a persona card:
 
-- the generator stays locked until a character is selected
-- once a character is linked, the generator becomes editable
-- generation blends character truth, persona truth, runtime truth, and relationship-save state
-- the result should feel like a plausible present-tense narrative projection for that pair
-- if the persona cannot fit the canon scene cleanly, the UI should make `ALT` and `BRANCH` the explicit decision points
+- The generator stays locked until a character is selected
+- Once a character is linked, the generator becomes editable
+- Generation blends character truth, persona truth, runtime truth, and relationship-save state
+- The result should feel like a plausible present-tense narrative projection for that pair
+- If the persona can't fit the canon scene cleanly, the UI should make `ALT` and `BRANCH` the explicit decision points
 
 ## Screen behavior
 
@@ -67,10 +67,10 @@ Required sections:
 
 Optional downstream outputs:
 
-- first message
-- alternate first messages
-- narrative-arc lorebook hooks
-- runtime overlay
+- First message
+- Alternate first messages
+- Narrative-arc lorebook hooks
+- Runtime overlay
 - BRANCH path
 
 ## Locking rules

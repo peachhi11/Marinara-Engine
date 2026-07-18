@@ -2,7 +2,7 @@
 
 This document explains which HumanOS material is canonical in the HumanOS repo and which material is owned by Marinara Engine.
 
-Use it before editing docs or behavior so framework concepts and app-specific implementation do not drift into each other.
+Use it before editing docs or behavior so framework concepts and app-specific implementation don't drift into each other.
 
 ## Canonical framework repo
 
@@ -27,27 +27,27 @@ Current branch-owned framework surfaces:
 
 Keep these in the HumanOS repo when they are meant as canonical framework material:
 
-- layer definitions
-- truth boundaries
-- reusable contracts
-- reusable templates
-- retrieval ownership rules
-- world and setting boundary rules
-- authoring workflow and placement guidance
-- reviewer or evaluation rules that are not specific to one app
-- reviewer operating modes and scope-selection rules
+- Layer definitions
+- Truth boundaries
+- Reusable contracts
+- Reusable templates
+- Retrieval ownership rules
+- World and setting boundary rules
+- Authoring workflow and placement guidance
+- Reviewer or evaluation rules that aren't specific to one app
+- Reviewer operating modes and scope-selection rules
 
 ## What belongs in Marinara
 
 Keep these in Marinara when they are primarily about this product's implementation:
 
-- route surfaces
-- storage adapters
-- governed commit implementation details
+- Route surfaces
+- Storage adapters
+- Governed commit implementation details
 - UI tabs, buttons, and click paths
 - Professor Mari tool wiring
-- import and export behavior
-- app-specific debugging notes
+- Import and export behavior
+- App-specific debugging notes
 
 ## Current mapping
 

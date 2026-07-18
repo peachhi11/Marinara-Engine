@@ -17,7 +17,7 @@ Noodle currently has two inline text-generation prompts and one registered image
 | Noodle activity inserted into chat prompts                  | `packages/server/src/services/noodle/noodle-context.ts`            | `buildRecentSocialMediaActivityBlock()`         | Change filtering or block assembly in code; users control target modes and limits in Noodle Settings.                                 |
 | Generated JSON contract                                     | `packages/shared/src/schemas/noodle.schema.ts`                     | `noodleGeneratedRefreshSchema`                  | Change only alongside the prompt, route processing, shared types, and regression coverage.                                            |
 
-The timeline and profile prompts are not currently listed in the Prompt Overrides UI. The **Noodle Post Image** template is the only Noodle generation prompt exposed there. The Noodle-local **Prompt instructions** field is passed into that image template; it does not modify the timeline-writing prompt.
+The timeline and profile prompts aren't currently listed in the Prompt Overrides UI. The **Noodle Post Image** template is the only Noodle generation prompt exposed there. The Noodle-local **Prompt instructions** field is passed into that image template. It doesn't modify the timeline-writing prompt.
 
 The image route loads `NOODLE_IMAGE_POST`, then passes the result through `compileImagePrompt()` before sending it to the image provider. This means the final request can also be affected by the selected image style profile and connection defaults.
 

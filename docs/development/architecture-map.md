@@ -8,7 +8,7 @@ File counts, line counts, and route counts drift as the repo changes. This map g
 
 ## Section codes
 
-Use these codes when planning moves, labeling issues, or adding a short file header to code that cannot be moved yet.
+Use these codes when planning moves, labeling issues, or adding a short file header to code that can't be moved yet.
 
 | Code | Meaning | Primary home |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ Rules:
 
 - No React, DOM, Fastify, Drizzle, filesystem, network, or provider SDK code.
 - Move code here only when both client and server need the same contract or pure algorithm.
-- Do not turn `shared` into a general dumping ground for client-only helpers.
+- Don't turn `shared` into a general dumping ground for client-only helpers.
 
 ### packages/client
 
@@ -128,7 +128,7 @@ Primary code:
 Expected boundary:
 
 - Conversation should own schedules, autonomous check-ins, conversation activity, and non-roleplay message display.
-- Conversation should not know about game dice, GM tags, quick-time events, game maps, or game combat.
+- Conversation shouldn't know about game dice, GM tags, quick-time events, game maps, or game combat.
 
 ### Roleplay mode
 
@@ -154,7 +154,7 @@ Primary code:
 Expected boundary:
 
 - Game should own GM prompts, party prompts, dice, skill checks, quick-time events, game combat, maps, travel and rest, weather and time, NPC reputation, game session summaries, generated game assets, and game logs.
-- Game should not depend on chat-mode UI except through shared primitives or explicitly shared feature components.
+- Game shouldn't depend on chat-mode UI except through shared primitives or explicitly shared feature components.
 
 ## Current large files
 
@@ -172,7 +172,7 @@ These files are the most likely to slow future work because they mix many concer
 
 ## Target structure
 
-This is the direction for future refactors. It does not require moving everything at once.
+This is the direction for future refactors. It doesn't require moving everything at once.
 
 ### Client target
 

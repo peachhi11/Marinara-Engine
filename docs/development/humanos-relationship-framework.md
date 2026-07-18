@@ -2,7 +2,7 @@
 
 The relationship framework describes how a specific character/persona pairing should be interpreted in play.
 
-It is not a universal numeric matrix. It is a qualitative layer that helps the runtime and narrative arc generator understand what kind of relationship is active, what that relationship can plausibly support, and what would need to change before a different beat becomes believable.
+It isn't a universal numeric matrix. It's a qualitative layer that helps the runtime and narrative arc generator understand what kind of relationship is active, what that relationship can plausibly support, and what would need to change before a different beat becomes believable.
 
 ## Purpose
 
@@ -10,11 +10,11 @@ The relationship framework exists so HumanOS can avoid treating every relationsh
 
 It should help the system answer:
 
-- what kind of relationship this is
-- what tone the relationship currently supports
-- what intimacy, conflict, distance, or loyalty would feel earned
-- what would be too fast, too cold, too intense, or too clean for this pair
-- which next beats fit the current story and which would require `ALT` or `BRANCH`
+- What kind of relationship this is
+- What tone the relationship currently supports
+- What intimacy, conflict, distance, or loyalty would feel earned
+- What would be too fast, too cold, too intense, or too clean for this pair
+- Which next beats fit the current story and which would require `ALT` or `BRANCH`
 
 ## Ownership
 
@@ -22,29 +22,29 @@ The relationship framework is an interpretive layer, not a durable truth source 
 
 It reads from:
 
-- character truth
-- persona truth
-- runtime truth
-- relationship-save history
-- narrative arc phase
-- active scene pressure
-- relevant lorebook context
+- Character truth
+- Persona truth
+- Runtime truth
+- Relationship-save history
+- Narrative arc phase
+- Active scene pressure
+- Relevant lorebook context
 
 It can inform:
 
-- runtime relationship state
-- narrative arc projection
-- first-message and alternate-opening seeds
-- lorebook hooks
+- Runtime relationship state
+- Narrative arc projection
+- First-message and alternate-opening seeds
+- Lorebook hooks
 - Professor Mari guidance
 
-It must not overwrite:
+It mustn't overwrite:
 
-- character card truth
-- persona card truth
-- canonical lorebook facts
-- committed relationship-save history
-- current runtime evidence
+- Character card truth
+- Persona card truth
+- Canonical lorebook facts
+- Committed relationship-save history
+- Current runtime evidence
 
 ## Relationship type
 
@@ -54,20 +54,20 @@ Use readable trope-coded language instead of clinical or purely numeric labels. 
 
 Examples:
 
-- strangers with spark
-- reluctant allies
-- rivals with unresolved respect
-- slow-burn friends to lovers
-- exes with unfinished business
-- protector and protected
-- mentor and protege
-- caretaker and guarded patient
-- forbidden loyalty
-- enemies forced into cooperation
-- rupture and repair
-- settled domestic trust
+- Strangers with spark
+- Reluctant allies
+- Rivals with unresolved respect
+- Slow-burn friends to lovers
+- Exes with unfinished business
+- Protector and protected
+- Mentor and protege
+- Caretaker and guarded patient
+- Forbidden loyalty
+- Enemies forced into cooperation
+- Rupture and repair
+- Settled domestic trust
 
-These labels are not fixed routes. They are interpretive handles that tell the LLM what kind of relational logic to follow.
+These labels aren't fixed routes. They are interpretive handles that tell the LLM what kind of relational logic to follow.
 
 ## Modifiers
 
@@ -92,16 +92,16 @@ The narrative arc controller owns story phase. Runtime owns present tension. The
 
 Common relationship phases:
 
-- first contact
-- recognition
-- testing
-- cooperation
-- slow burn
-- rupture
-- repair
-- confession
-- renegotiation
-- settled bond
+- First contact
+- Recognition
+- Testing
+- Cooperation
+- Slow burn
+- Rupture
+- Repair
+- Confession
+- Renegotiation
+- Settled bond
 
 The same phase can look different under different relationship types. A rupture between rivals may sharpen respect; a rupture in settled domestic trust may feel like grief; a rupture in a first meeting may simply end the scene.
 
@@ -111,15 +111,15 @@ Use a trust web rather than a single trust ladder.
 
 Trust can develop unevenly across different strands:
 
-- practical trust: "I trust you to do the job."
-- emotional trust: "I trust you with what I feel."
-- moral trust: "I trust your values."
-- physical trust: "I feel safe near you."
-- social trust: "I trust you not to expose me."
-- romantic trust: "I trust the attraction is mutual and safe enough to act on."
-- narrative trust: "I trust this story can move forward without breaking what has been earned."
+- Practical trust: "I trust you to do the job."
+- Emotional trust: "I trust you with what I feel."
+- Moral trust: "I trust your values."
+- Physical trust: "I feel safe near you."
+- Social trust: "I trust you not to expose me."
+- Romantic trust: "I trust the attraction is mutual and safe enough to act on."
+- Narrative trust: "I trust this story can move forward without breaking what has been earned."
 
-The system may describe these strands qualitatively. It should not require every strand to move together.
+The system may describe these strands qualitatively. It shouldn't require every strand to move together.
 
 ## Plausibility checks
 

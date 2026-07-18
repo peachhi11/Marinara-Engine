@@ -81,7 +81,7 @@ A manifest can supply both a file path and inline content for the same slot (for
 | `config.js` | No | Inline browser JavaScript. Up to 1 MiB, measured as UTF-8 bytes. |
 | `config.serverJs` | No | Inline server JavaScript. Up to 1 MiB. Required for a server extension unless `serverJsPath` supplies the code. |
 
-Point `jsPath` and `serverJsPath` at plain JavaScript. Marinara does not compile TypeScript for extension code. A `.ts` file will not run, even though folder import can read it as package text.
+Point `jsPath` and `serverJsPath` at plain JavaScript. Marinara doesn't compile TypeScript for extension code. A `.ts` file won't run, even though folder import can read it as package text.
 
 ### Packaging several extensions
 
@@ -110,7 +110,7 @@ To ship more than one extension in a single folder, add a root file named `marin
 }
 ```
 
-If there is no root package file, folder import scans for every `manifest.json` it can find and imports each one as its own extension.
+If there's no root package file, folder import scans for every `manifest.json` it can find and imports each one as its own extension.
 
 ## Writing a browser extension
 
@@ -152,7 +152,7 @@ The `marinara` helpers below all clean up automatically when the extension is di
 | `marinara.observe(target, callback, options)` | Creates a MutationObserver (default options watch child list and subtree) that disconnects on unload. |
 | `marinara.onCleanup(fn)` | Registers your own cleanup callback. If the extension already unloaded, `fn` runs right away. |
 
-Plain browser globals like `document`, `window`, and `fetch` are also reachable. The code runs as a real page module, not in a sandbox. Marinara catches any error while your module loads or runs. It writes the error to the browser devtools console, tagged with the extension name. It does not crash the app.
+Plain browser globals like `document`, `window`, and `fetch` are also reachable. The code runs as a real page module, not in a sandbox. Marinara catches any error while your module loads or runs. It writes the error to the browser devtools console, tagged with the extension name. It doesn't crash the app.
 
 ## CSS sanitization rules
 
@@ -160,13 +160,13 @@ All extension CSS is cleaned before it reaches the page. This applies to the man
 
 What the sanitizer changes:
 
-- Any `url()` that is not an allowed `data:` URI is rewritten to `url(about:invalid)`. Allowed prefixes are `data:image/`, `data:font/`, `data:application/font`, and `data:application/x-font`.
+- Any `url()` that isn't an allowed `data:` URI is rewritten to `url(about:invalid)`. Allowed prefixes are `data:image/`, `data:font/`, `data:application/font`, and `data:application/x-font`.
 - `@import` and `@namespace` rules are removed.
 - An `@font-face` block is kept only when every source is a font `data:` URI. A `local()` source makes the whole block drop.
 - `expression(...)`, `javascript:`, `vbscript:`, `behavior:`, and `-moz-binding:` are stripped.
 - `:visited` is rewritten to `:link`.
 
-The practical effect: you cannot load a remote font, a remote background image, or an external stylesheet. If your extension needs a font or an image, embed it as a `data:` URI inside the CSS. A remote link will not error, it will just have no effect.
+The practical effect: you can't load a remote font, a remote background image, or an external stylesheet. If your extension needs a font or an image, embed it as a `data:` URI inside the CSS. A remote link won't error, it will just have no effect.
 
 ## Writing a server extension
 
@@ -210,7 +210,7 @@ marinara.onCleanup(() => {
 
 ### The sandbox
 
-Server code runs inside a Node `vm` sandbox. It does not get `require`, filesystem access, or the app's internal modules. The sandbox exposes only the `marinara` helper, a `console` shim that writes to the server log, the timer functions, and a few standard globals: `URL`, `URLSearchParams`, `TextDecoder`, `TextEncoder`, `AbortController`, and `AbortSignal`.
+Server code runs inside a Node `vm` sandbox. It doesn't get `require`, filesystem access, or the app's internal modules. The sandbox exposes only the `marinara` helper, a `console` shim that writes to the server log, the timer functions, and a few standard globals: `URL`, `URLSearchParams`, `TextDecoder`, `TextEncoder`, `AbortController`, and `AbortSignal`.
 
 There are time limits, and none of them are configurable:
 
@@ -238,11 +238,11 @@ A server extension reloads (it stops, then starts again) whenever you create, up
 
 ### Reading the status
 
-While an enabled server extension is loaded, its row in the **Extension Library** shows a status badge. **Running** means it loaded and started. **Error** shows the caught error message under the row. For example, a server extension with no code shows **Error** with the message "No server JavaScript payload". **Stopped** means it is not currently running.
+While an enabled server extension is loaded, its row in the **Extension Library** shows a status badge. **Running** means it loaded and started. **Error** shows the caught error message under the row. For example, a server extension with no code shows **Error** with the message "No server JavaScript payload". **Stopped** means it isn't currently running.
 
 ## The bundled example
 
-Marinara ships a minimal browser extension you can import to see the format in action. It lives in the install and repository at `docs/examples/extensions/minimal/`, and it is not visible inside the app. The docs browser does not serve the `examples/` folder, so there is no in-app link. Open the folder from the file system to find these three files.
+Marinara ships a minimal browser extension you can import to see the format in action. It lives in the install and repository at `docs/examples/extensions/minimal/`, and it isn't visible inside the app. The docs browser doesn't serve the `examples/` folder, so there's no in-app link. Open the folder from the file system to find these three files.
 
 The `manifest.json`:
 
@@ -280,7 +280,7 @@ The `extension.js` dispatches one event on load:
 })();
 ```
 
-The shipped example does not call the `marinara` helpers. Use the browser marinara API section above for those.
+The shipped example doesn't call the `marinara` helpers. Use the browser marinara API section above for those.
 
 ## Related guides
 

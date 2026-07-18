@@ -4,22 +4,22 @@ Use this template when asking an LLM to produce a readable persona from sparse n
 
 The point is to keep persona truth separate from character truth:
 
-- a persona is the user-controlled identity in the chat
-- a character is the other person in the story
-- runtime belongs to the current chat, not the card
-- world truth only appears when the setting requires it
+- A persona is the user-controlled identity in the chat
+- A character is the other person in the story
+- Runtime belongs to the current chat, not the card
+- World truth only appears when the setting requires it
 
 ## Writing contract for the LLM
 
 When filling this template, the LLM should:
 
-- write plain prose that is easy to scan
-- keep identity, personality, appearance, and story context separate
-- avoid turning one trait into five near-duplicate sentences
-- preserve established canon or user-supplied preferences
-- mark unknowns as unknown rather than inventing them
-- keep live scene state out of the persona card
-- treat the persona as a stable participant, not a temporary mood board
+- Write plain prose that is easy to scan
+- Keep identity, personality, appearance, and story context separate
+- Avoid turning one trait into five near-duplicate sentences
+- Preserve established canon or user-supplied preferences
+- Mark unknowns as unknown rather than inventing them
+- Keep live scene state out of the persona card
+- Treat the persona as a stable participant, not a temporary mood board
 
 ## Output shape
 
@@ -78,13 +78,13 @@ If the source material is built from HumanOS, keep the layers separate:
 
 A good persona answer should tell us:
 
-- who this person is
-- how they normally behave
-- what kind of role they occupy in the story
-- what they care about in connection
-- how they sound when calm, stressed, or affectionate
+- Who this person is
+- How they normally behave
+- What kind of role they occupy in the story
+- What they care about in connection
+- How they sound when calm, stressed, or affectionate
 
-If the source is sparse, expand only what the source supports. Do not invent a dramatic secret just because the template has a backstory section.
+If the source is sparse, expand only what the source supports. Don't invent a dramatic secret just because the template has a backstory section.
 
 ## Suggested prompt wrapper
 

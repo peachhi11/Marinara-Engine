@@ -2,15 +2,15 @@
 
 Use this template when asking an LLM to produce a readable character card from sparse notes, a persona draft, a relationship sketch, or a fuller HumanOS module draft.
 
-The goal is not to make the card longer. The goal is to make the character legible:
+The goal isn't to make the card longer. The goal is to make the character legible:
 
-- one stable identity
-- one clear psychological engine
-- one visible presentation
-- one relationship pattern
-- one speech model
-- one story-use overview
-- no mixing runtime, world state, or lorebook depth into durable card truth
+- One stable identity
+- One clear psychological engine
+- One visible presentation
+- One relationship pattern
+- One speech model
+- One story-use overview
+- No mixing runtime, world state, or lorebook depth into durable card truth
 
 ## Layer contract
 
@@ -31,7 +31,7 @@ The HumanOS character template is a module system. Some modules belong in the al
 | 11. Director / Arc Engine | Arc trope, progression gates, regression, conflict engine, output logic | Narrative arc contract |
 | 12. Overview | Synthesized summary generated last and placed first | Character card overview |
 
-Modules 1-7 and 12 can be rendered into the readable card. Modules 8-11 should inform generation and downstream artifacts, but they should not be copied wholesale into durable character truth.
+Modules 1-7 and 12 can be rendered into the readable card. Modules 8-11 should inform generation and downstream artifacts. But they shouldn't be copied wholesale into durable character truth.
 
 ## Field mapping
 
@@ -43,22 +43,22 @@ For SillyTavern-style card export, the source module draft maps roughly as:
 - `{{personaBackstory}}`: Modules 9-11, World, Relational Infrastructure, and Arc Engine
 - Overview: Module 12, generated last, placed first
 
-These field names are compatibility labels. They do not change the HumanOS truth boundaries.
+These field names are compatibility labels. They don't change the HumanOS truth boundaries.
 
 ## Writing contract for the LLM
 
 When filling this template, the LLM should:
 
-- write in plain prose, not a dump of bullet points
-- keep appearance, psychology, story role, relationship style, and speech separate
-- generate behavior from cause, not trait labels
-- describe behavior as tendencies, not guarantees
-- preserve established canon and user-supplied facts
-- mark uncertain facts as unknown instead of inventing them
-- keep runtime state out of the durable card unless the user explicitly asks for a current-state card
-- keep world facts out of the card unless they are necessary to understand the character
-- use qualitative relationship language instead of a universal numeric trust gate
-- treat sexual material as adult-only, optional, and bounded by the user's source material
+- Write in plain prose, not a dump of bullet points
+- Keep appearance, psychology, story role, relationship style, and speech separate
+- Generate behavior from cause, not trait labels
+- Describe behavior as tendencies, not guarantees
+- Preserve established canon and user-supplied facts
+- Mark uncertain facts as unknown instead of inventing them
+- Keep runtime state out of the durable card unless the user explicitly asks for a current-state card
+- Keep world facts out of the card unless they are necessary to understand the character
+- Use qualitative relationship language instead of a universal numeric trust gate
+- Treat sexual material as adult-only, optional, and bounded by the user's source material
 
 ## Module 12 overview
 
@@ -134,35 +134,35 @@ Runtime is mutable story truth. It answers what is true right now, not who the c
 
 Runtime may include:
 
-- active arc and phase
-- rhythm state
-- current scene
-- immediate goal
-- current mood, stress, fatigue, and hope
-- wound, lie, defense, vulnerability, and arousal phase as current-state labels
-- active memories from the current scene
-- current relationship state for the active pairing
+- Active arc and phase
+- Rhythm state
+- Current scene
+- Immediate goal
+- Current mood, stress, fatigue, and hope
+- Wound, lie, defense, vulnerability, and arousal phase as current-state labels
+- Active memories from the current scene
+- Current relationship state for the active pairing
 
-Runtime must not overwrite Modules 1-7. If a scene changes the character permanently, record the evidence through the governed runtime and relationship-save paths before changing durable architecture.
+Runtime mustn't overwrite Modules 1-7. If a scene changes the character permanently, record the evidence through the governed runtime and relationship-save paths before changing durable architecture.
 
 See [HumanOS v2 Runtime Contract](humanos-runtime-contract.md).
 
 ## Module 9 world boundary
 
-World is external pressure. It is not the character.
+World is external pressure. It isn't the character.
 
 World material may define:
 
-- setting environment
-- time period and current events
-- primary location
-- genre and tone
-- technology baseline
-- socioeconomic climate
-- politics and power systems
-- social norms
-- mortality rules
-- behavioral constraints such as travel time, exhaustion, law, money, and consequence
+- Setting environment
+- Time period and current events
+- Primary location
+- Genre and tone
+- Technology baseline
+- Socioeconomic climate
+- Politics and power systems
+- Social norms
+- Mortality rules
+- Behavioral constraints such as travel time, exhaustion, law, money, and consequence
 
 World details belong in scenario, world-state, or lorebook surfaces unless a detail is necessary to understand the character's durable identity.
 
@@ -175,7 +175,7 @@ Use tiers:
 - **Tier 1, in-card**: name and role only for main supporting cast
 - **Tier 2, lorebook**: full NPC profile for significant recurring characters
 - **Tier 3, lorebook note**: one or two sentences for mentioned or minor recurring characters
-- **Tier 4, no file**: background people who do not need durable state
+- **Tier 4, no file**: background people who don't need durable state
 
 Relationship dynamics between the character and NPCs should be compact in the card and deeper in lorebooks or relationship framework notes.
 
@@ -187,25 +187,25 @@ The arc engine describes how the character changes, bends, breaks, and recovers.
 
 It should follow these principles:
 
-- behavior is generated from cause, not traits
-- character laws remain active
-- story truth cannot overwrite immutable character truth
-- setting applies pressure but does not define personality
-- the arc moves because something was earned, not because time passed
-- growth expands available behaviors without erasing defenses
-- regression can happen, but it must not erase earned development
+- Behavior is generated from cause, not traits
+- Character laws remain active
+- Story truth can't overwrite immutable character truth
+- Setting applies pressure but doesn't define personality
+- The arc moves because something was earned, not because time passed
+- Growth expands available behaviors without erasing defenses
+- Regression can happen, but it mustn't erase earned development
 
 Arc control may include:
 
-- arc trope and romance beat framework
-- staged relationship or character progression
-- progression gates such as safety, specific attention, repair, mutual exposure, and choice
-- regression rules
-- sexual arc axes when relevant and adult-only
-- conflict from law collision
-- setting pressure against character laws
-- anti-loop rules that force consequence after repeated patterns
-- silent output logic for what the character wants, fears, defends, and risks right now
+- Arc trope and romance beat framework
+- Staged relationship or character progression
+- Progression gates such as safety, specific attention, repair, mutual exposure, and choice
+- Regression rules
+- Sexual arc axes when relevant and adult-only
+- Conflict from law collision
+- Setting pressure against character laws
+- Anti-loop rules that force consequence after repeated patterns
+- Silent output logic for what the character wants, fears, defends, and risks right now
 
 This belongs primarily to the narrative arc system, not the always-on card.
 
@@ -213,17 +213,17 @@ See [HumanOS v2 Narrative Arc Contract](humanos-narrative-arc-contract.md).
 
 ## Relationship progression rule
 
-Do not treat trust as one universal ladder.
+Don't treat trust as one universal ladder.
 
 For a character card, it is useful to describe how trust is usually earned with this character. For runtime and narrative projection, use the relationship framework's qualitative trust web instead:
 
-- practical trust
-- emotional trust
-- moral trust
-- physical trust
-- social trust
-- romantic trust
-- narrative trust
+- Practical trust
+- Emotional trust
+- Moral trust
+- Physical trust
+- Social trust
+- Romantic trust
+- Narrative trust
 
 This lets a character trust someone in one strand while remaining guarded in another. It also prevents every romance, rivalry, friendship, alliance, or rupture from following the same fixed staircase.
 
@@ -231,23 +231,23 @@ This lets a character trust someone in one strand while remaining guarded in ano
 
 A good character card answer should feel like a person a reader can recognize immediately. It should tell us:
 
-- what this person looks like
-- what this person values
-- what this person does under pressure
-- what wound and false belief shape them
-- how they move through relationships
-- how they speak when calm, threatened, hurt, or softening
-- what kind of story pressure reveals who they really are
+- What this person looks like
+- What this person values
+- What this person does under pressure
+- What wound and false belief shape them
+- How they move through relationships
+- How they speak when calm, threatened, hurt, or softening
+- What kind of story pressure reveals who they really are
 
-It should not:
+It shouldn't:
 
-- restate the same trait in three different sections
-- overexplain the writing process
-- sound like a wiki entry with no emotional center
-- invent a dramatic trauma to fill a section
-- force a romantic or sexual arc when the source does not support one
-- turn runtime scene details into permanent biography
-- copy world, NPC, or arc infrastructure wholesale into the card
+- Restate the same trait in three different sections
+- Overexplain the writing process
+- Sound like a wiki entry with no emotional center
+- Invent a dramatic trauma to fill a section
+- Force a romantic or sexual arc when the source doesn't support one
+- Turn runtime scene details into permanent biography
+- Copy world, NPC, or arc infrastructure wholesale into the card
 
 ## Suggested prompt wrapper
 
@@ -277,14 +277,14 @@ When the source is thin, the LLM should only expand what is justified by the inp
 
 Allowed expansion:
 
-- consolidate overlapping traits
-- infer likely emotional style from repeated behavior
-- turn vague notes into readable prose
-- name plausible contradictions when the source already implies them
+- Consolidate overlapping traits
+- Infer likely emotional style from repeated behavior
+- Turn vague notes into readable prose
+- Name plausible contradictions when the source already implies them
 
 Not allowed:
 
-- inventing a secret trauma to make the card sound deeper
-- adding a backstory because the template has a backstory section
-- turning a roleplay premise into permanent biography
-- turning a current relationship beat into permanent relationship history
+- Inventing a secret trauma to make the card sound deeper
+- Adding a backstory because the template has a backstory section
+- Turning a roleplay premise into permanent biography
+- Turning a current relationship beat into permanent relationship history

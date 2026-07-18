@@ -10,13 +10,13 @@
 The repository contains an **in-progress implementation** of this ADR, with **Phase A complete** and later phases still open:
 
 - `state_authority_records`, `state_patch_proposals`, `state_parity_verifications`, `state_target_heads`, and `state_commit_ledger` exist in both legacy SQLite migrations and file-native persistence;
-- canonical JSON normalization/hashing, strict authority/evidence types, the adapter registry, deterministic dependency planning, and separate non-authoritative parity diagnostics are implemented;
+- Canonical JSON normalization/hashing, strict authority/evidence types, the adapter registry, deterministic dependency planning, and separate non-authoritative parity diagnostics are implemented;
 - HumanOS Runtime remains the selected legacy-authoritative writer and runs best-effort predictive parity verification after successful commits without allowing parity to mutate projections or target heads;
 - Phase B1 now adds a stored-proposal Runtime commit kernel, transaction-aware proposal resolution, commit-time evidence revalidation, and an authoritative-capable Runtime adapter that persists compatibility rows atomically when invoked through the generic path;
 - Phase A acceptance coverage proves exact replay, conflicting retry rejection, stale canonical-anchor rejection, stable randomized planning, parity isolation, authority-row separation, legacy migration, and file-native restart persistence;
-- the Runtime compatibility path preserves its existing projection and API behavior, while Relationship Save remains an early Phase C prototype.
+- The Runtime compatibility path preserves its existing projection and API behavior, while Relationship Save remains an early Phase C prototype.
 
-Phase B exit criteria have **not** been met: B1 is complete, but the production Runtime caller has not yet cut over to the generic authoritative service, the legacy `humanos_runtime:<chatId>` target/head identity has not been migrated to the canonical `humanos_runtime:chat:<chatId>` stream, and legacy raw-text hash history has not been reconciled with canonical projection hashes. Compensation plus the broader all-adapter contract matrix remain later implementation work. The Relationship Save prototype must not be interpreted as completion of Phase C. Public governed routes retain server-owned authority boundaries, and blocked routes remain blocked until their internal authority paths exist. The locked decisions and migration order below remain normative; implementation status must be judged by phase exit criteria, not merely by table or route presence.
+Phase B exit criteria have **not** been met: B1 is complete, but the production Runtime caller hasn't yet cut over to the generic authoritative service, the legacy `humanos_runtime:<chatId>` target/head identity hasn't been migrated to the canonical `humanos_runtime:chat:<chatId>` stream, and legacy raw-text hash history hasn't been reconciled with canonical projection hashes. Compensation plus the broader all-adapter contract matrix remain later implementation work. The Relationship Save prototype mustn't be interpreted as completion of Phase C. Public governed routes retain server-owned authority boundaries, and blocked routes remain blocked until their internal authority paths exist. The locked decisions and migration order below remain normative; implementation status must be judged by phase exit criteria, not merely by table or route presence.
 
 ## 1. Problem
 
@@ -30,14 +30,14 @@ Current governed HTTP authority matrix:
 | `PUT /api/humanos-v2/relationship-save/:chatId/:characterId/:personaId` | Content-only: state and counts | Server derives evidence, revision, ordering, idempotency, actor, and a target-bound explicit manual authority record. |
 | `POST /api/humanos-v2/relationship-save/:chatId/:characterId/:personaId/checkpoint` | Blocked (`403`) | Awaiting the internal scheduler/classifier authority path. |
 
-HumanOS architecture writes are not yet governed and remain migration backlog; they are not covered by this matrix. Some append snapshots, while others directly update aggregate or document rows.
+HumanOS architecture writes aren't yet governed and remain migration backlog; they aren't covered by this matrix. Some append snapshots, while others directly update aggregate or document rows.
 
 That inconsistency creates four authority risks:
 
-1. a rejected or edited draft may indirectly influence durable state;
-2. two agents may overwrite the same target without deterministic ordering;
-3. retries may duplicate or mutate state differently;
-4. a stored value may have no durable evidence linking it to the canonical prose that authorized it.
+1. A rejected or edited draft may indirectly influence durable state;
+2. Two agents may overwrite the same target without deterministic ordering;
+3. Retries may duplicate or mutate state differently;
+4. A stored value may have no durable evidence linking it to the canonical prose that authorized it.
 
 The generalized system must make every governed write a two-step operation:
 
@@ -49,15 +49,15 @@ Agents propose state. The server owns commit authority.
 ## 2. Design principles
 
 1. **Server-owned authority evidence is mandatory.** Agent-authored and automatically inferred commits require canonical message/swipe/hash evidence. User, administrator, repair, and migration commits require an explicit server-owned authority record and may not forge canonical-turn provenance.
-2. **Proposals are not state.** A proposal may be stored for audit, but projections and ordinary reads ignore it until committed.
-3. **Commit authority is server-only.** Models cannot supply revision coordinates, canonical hashes, commit order, or idempotency identity.
+2. **Proposals aren't state.** A proposal may be stored for audit, but projections and ordinary reads ignore it until committed.
+3. **Commit authority is server-only.** Models can't supply revision coordinates, canonical hashes, commit order, or idempotency identity.
 4. **Targets are independently revisioned.** Conflicts are checked per logical target, not against one global chat revision.
 5. **Committed history is append-only.** Mutable application tables are projections of committed history, not the audit authority.
 6. **Retries are exact or rejected.** Reusing an idempotency key with identical normalized input replays the prior result; different input is an idempotency conflict.
 7. **Ordering is deterministic.** Same-turn patches are sorted by server-assigned phase, target key, writer priority, and proposal ID.
 8. **Adapters validate semantics.** The generic kernel owns authority and concurrency; target adapters own patch schemas, invariants, and projection updates.
-9. **Failure scope is explicit.** Required commits block their declared boundary; degradable commits record failure and do not poison unrelated targets.
-10. **Operational state is not automatically narrative state.** Caches, vectors, thumbnails, delivery receipts, and device/UI preferences stay outside this ledger unless they become story-authoritative.
+9. **Failure scope is explicit.** Required commits block their declared boundary; degradable commits record failure and don't poison unrelated targets.
+10. **Operational state isn't automatically narrative state.** Caches, vectors, thumbnails, delivery receipts, and device/UI preferences stay outside this ledger unless they become story-authoritative.
 
 ## 3. Governed and excluded writes
 
@@ -78,22 +78,22 @@ Initial target kinds for the roleplay/chat product:
 - `chat_summary`
 - `message_narrative_metadata`
 
-Game/session adapters are not part of this implementation roadmap. The generic kernel remains extensible, but no game-state migration, target decomposition, or compatibility work is required for this project.
+Game/session adapters aren't part of this implementation roadmap. The generic kernel remains extensible, but no game-state migration, target decomposition, or compatibility work is required for this project.
 
 ### 3.2 Excluded by default
 
 These remain ordinary operational writes unless a later ADR promotes them:
 
-- image, sprite, audio, and video generation jobs;
+- Image, sprite, audio, and video generation jobs;
 - Discord/Home Assistant delivery state;
-- embeddings and vector indexes;
-- search caches and derived activation indexes;
-- typing/activity indicators;
-- local presentation preferences, layout, theme, and transient HUD state;
-- telemetry, logs, and agent-run diagnostics;
-- candidate publication lifecycle, which already has its own authority boundary.
+- Embeddings and vector indexes;
+- Search caches and derived activation indexes;
+- Typing/activity indicators;
+- Local presentation preferences, layout, theme, and transient HUD state;
+- Telemetry, logs, and agent-run diagnostics;
+- Candidate publication lifecycle, which already has its own authority boundary.
 
-A UI-facing value that becomes canonical story state must use a governed target adapter. “It is shown in the HUD” is not itself enough to classify it.
+A UI-facing value that becomes canonical story state must use a governed target adapter. "It is shown in the HUD" isn't itself enough to classify it.
 
 ## 4. Core model
 
@@ -123,7 +123,7 @@ interface ExplicitAuthorityEvidence {
 type CommitEvidence = CanonicalTurnEvidence | ExplicitAuthorityEvidence;
 ```
 
-The server creates canonical-turn evidence after promotion and revalidates it immediately before each agent or automatic commit batch. Manual, repair, and migration paths create explicit authority records with authenticated actor identity and reason. Models never receive authority to alter either form. If selected canonical content changes, outstanding canonical-turn proposals become stale and cannot commit.
+The server creates canonical-turn evidence after promotion and revalidates it immediately before each agent or automatic commit batch. Manual, repair, and migration paths create explicit authority records with authenticated actor identity and reason. Models never receive authority to alter either form. If selected canonical content changes, outstanding canonical-turn proposals become stale and can't commit.
 
 ### 4.2 Proposal envelope
 
@@ -185,7 +185,7 @@ sha256(
 
 Proposal identity, authority fields, target, operation, payload, hashes, evidence, and idempotency identity are immutable after insertion. Only resolution fields (`status`, `resolved_at`, `diagnostic_json`, and `commit_id`) may change. No generic proposal-patch API is exposed.
 
-Terminal failures remain durable audit records and do not alter target projections. Unresolved proposals remain available until resolved; if still unresolved after 90 days, they become compact `out_of_scope` tombstones retaining proposal identity, idempotency key, patch hash, evidence identity, timestamps, and final status. Committed ledger rows are permanent.
+Terminal failures remain durable audit records and don't alter target projections. Unresolved proposals remain available until resolved; if still unresolved after 90 days, they become compact `out_of_scope` tombstones retaining proposal identity, idempotency key, patch hash, evidence identity, timestamps, and final status. Committed ledger rows are permanent.
 
 ## 5. Storage schema
 
@@ -201,7 +201,7 @@ Suggested columns:
 - `operation`;
 - `patch_json`, `patch_hash`;
 - `base_revision`;
-- evidence-kind and evidence-union columns, including canonical coordinates or explicit authority-record identity;
+- Evidence-kind and evidence-union columns, including canonical coordinates or explicit authority-record identity;
 - `actor_type`, `actor_id`, `authority_path`, optional `agent_run_id`, optional `pipeline_stage`, `writer_priority`;
 - `commit_group_id`, `dependency_ids_json`, `failure_boundary`, `failure_mode`;
 - `logical_patch_slot`;
@@ -211,7 +211,7 @@ Suggested columns:
 
 Indexes:
 
-- unique `idempotency_key`;
+- Unique `idempotency_key`;
 - `(target_key, status, created_at)`;
 - `(chat_id, turn_id, status)`;
 - `(message_id, swipe_index)`;
@@ -240,15 +240,15 @@ Append-only committed history:
 - `base_revision`, `result_revision`;
 - `operation`, `patch_json`, `patch_hash`;
 - `before_hash`, `result_hash`;
-- server-owned authority-evidence columns;
-- actor identity and authority-path columns;
-- deterministic `batch_id` and `commit_order`;
+- Server-owned authority-evidence columns;
+- Actor identity and authority-path columns;
+- Deterministic `batch_id` and `commit_order`;
 - `commit_group_id` and dependency provenance;
-- nullable `compensates_commit_id`;
+- Nullable `compensates_commit_id`;
 - `idempotency_key` unique;
 - `committed_at`.
 
-No update or delete API is exposed for committed rows. Administrative repair must create a compensating commit with explicit provenance. User, administrator, system, and agent writes share this ledger and target-head model through the actor-aware envelope. During migration, compatibility edit APIs may remain, but every governed write must advance the target head and append an external-authority commit so stale agent proposals cannot overwrite it.
+No update or delete API is exposed for committed rows. Administrative repair must create a compensating commit with explicit provenance. User, administrator, system, and agent writes share this ledger and target-head model through the actor-aware envelope. During migration, compatibility edit APIs may remain, but every governed write must advance the target head and append an external-authority commit so stale agent proposals can't overwrite it.
 
 ## 6. Target adapter contract
 
@@ -285,55 +285,55 @@ Adapters must be deterministic and side-effect-free until `persistProjection`. N
 
 After all tracker proposals for the turn are collected:
 
-1. reload and verify the canonical message/swipe/hash;
-2. group proposals by `targetKey`;
-3. reject duplicate logical slots with different payloads;
-4. sort by:
-   - pipeline phase rank;
+1. Reload and verify the canonical message/swipe/hash;
+2. Group proposals by `targetKey`;
+3. Reject duplicate logical slots with different payloads;
+4. Sort by:
+   - Pipeline phase rank;
    - `targetKind` rank;
    - `targetKey` bytewise ascending;
-   - configured writer priority ascending;
+   - Configured writer priority ascending;
    - `proposalId` ascending;
-5. build independent target batches;
-6. detect mutually exclusive operations through adapter policy.
+5. Build independent target batches;
+6. Detect mutually exclusive operations through adapter policy.
 
-Do not let model completion timing determine commit order.
+Don't let model completion timing determine commit order.
 
 ### 7.3 Per-target transaction
 
 For each target batch:
 
-1. begin a database transaction;
-2. check for an existing row by idempotency key;
-3. revalidate canonical evidence;
-4. load or create the `state_target_heads` row;
-5. require `head.revision === proposal.baseRevision`;
-6. load the current projection and verify its hash against the head;
-7. apply and validate patches in deterministic order, assigning every committed proposal its own consecutive revision (`n→n+1`, then `n+1→n+2`);
-8. calculate and retain each intermediate result hash;
-9. persist the final projection once when the adapter can stage all deterministic intermediate states safely;
-10. append one ledger row per proposal with its unique base/result revision and intermediate result hash;
-11. compare-and-set the target head to the final revision/hash;
-12. resolve proposal statuses;
-13. commit;
-14. emit events and schedule derived jobs only after transaction success.
+1. Begin a database transaction;
+2. Check for an existing row by idempotency key;
+3. Revalidate canonical evidence;
+4. Load or create the `state_target_heads` row;
+5. Require `head.revision === proposal.baseRevision`;
+6. Load the current projection and verify its hash against the head;
+7. Apply and validate patches in deterministic order, assigning every committed proposal its own consecutive revision (`n→n+1`, then `n+1→n+2`);
+8. Calculate and retain each intermediate result hash;
+9. Persist the final projection once when the adapter can stage all deterministic intermediate states safely;
+10. Append one ledger row per proposal with its unique base/result revision and intermediate result hash;
+11. Compare-and-set the target head to the final revision/hash;
+12. Resolve proposal statuses;
+13. Commit;
+14. Emit events and schedule derived jobs only after transaction success.
 
-If an adapter cannot deterministically represent and hash intermediate states, the caller must submit one normalized compound proposal instead. Multiple ledger rows never share one result revision.
+If an adapter can't deterministically represent and hash intermediate states, the caller must submit one normalized compound proposal instead. Multiple ledger rows never share one result revision.
 
 If any transactional write fails, the projection, ledger, head, and proposal resolution must roll back together.
 
 ### 7.4 Cross-target behavior
 
-SQLite cannot provide useful distributed semantics across external systems, so the default unit of atomicity is one target key.
+SQLite can't provide useful distributed semantics across external systems, so the default unit of atomicity is one target key.
 
 - `commit_group_id`, `dependencyIds`, and `failureBoundary` are assigned by the server, never the model.
 - The default failure boundary is `target`.
 - `group` is used only when cross-target partial success would violate a declared story invariant.
-- `turn` is reserved for genuinely inseparable transitions and must not become the lazy default.
+- `turn` is reserved for genuinely inseparable transitions and mustn't become the lazy default.
 - A required proposal failure blocks its declared boundary and records all unattempted required dependents as blocked.
-- A degradable proposal failure does not roll back already committed unrelated target keys.
+- A degradable proposal failure doesn't roll back already committed unrelated target keys.
 - Dependencies between target keys must be explicit DAG edges. A dependent target commits only after all required parents succeed.
-- There is no silent best-effort ordering.
+- There's no silent best-effort ordering.
 
 ## 8. Conflict and merge policy
 
@@ -341,18 +341,18 @@ Default policy is **reject on revision conflict**. Automatic merge is adapter-sp
 
 Safe merge candidates:
 
-- append-only memory observations with unique evidence IDs;
-- set-union tags with canonical normalization.
+- Append-only memory observations with unique evidence IDs;
+- Set-union tags with canonical normalization.
 
-The first production release does not enable automatic merge. These are future adapter-specific candidates only after reject-on-conflict behavior is proven.
+The first production release doesn't enable automatic merge. These are future adapter-specific candidates only after reject-on-conflict behavior is proven.
 
 Never auto-merge by default:
 
-- relationship trust/intimacy values;
-- world facts with contradictory values;
-- summary replacement;
-- lorebook prose edits;
-- deletes.
+- Relationship trust/intimacy values;
+- World facts with contradictory values;
+- Summary replacement;
+- Lorebook prose edits;
+- Deletes.
 
 A merge-capable adapter must record both the originally proposed base revision and the actual merge base/result in diagnostics. It must generate the same result for the same inputs.
 
@@ -362,14 +362,14 @@ Ordinary application reads continue using target projection tables for performan
 
 Recovery rules:
 
-- rebuildable adapters may reconstruct projections by replaying ledger rows;
-- non-rebuildable adapters must retain periodic checkpoints with a ledger revision;
-- projection/head hash mismatch is corruption and fails closed;
-- undo is a compensating proposal, never deletion of history;
-- canonical message edits invalidate outstanding proposals but never auto-revert committed state;
-- prior commits remain historically linked to their original evidence hash;
-- evidence changes create an `evidence_superseded` provenance/reconciliation signal;
-- any state correction requires an explicit compensating commit validated against the current target revision.
+- Rebuildable adapters may reconstruct projections by replaying ledger rows;
+- Non-rebuildable adapters must retain periodic checkpoints with a ledger revision;
+- Projection/head hash mismatch is corruption and fails closed;
+- Undo is a compensating proposal, never deletion of history;
+- Canonical message edits invalidate outstanding proposals but never auto-revert committed state;
+- Prior commits remain historically linked to their original evidence hash;
+- Evidence changes create an `evidence_superseded` provenance/reconciliation signal;
+- Any state correction requires an explicit compensating commit validated against the current target revision.
 
 ## 10. Security and tool authority
 
@@ -387,19 +387,19 @@ Examples:
 
 Each tool is scoped by server-owned callbacks containing:
 
-- canonical evidence;
-- active chat/character/persona IDs;
-- allowed target kinds and operations;
-- captured base revisions;
-- actor identity, authority path, configured failure mode, and server-owned commit boundary.
+- Canonical evidence;
+- Active chat/character/persona IDs;
+- Allowed target kinds and operations;
+- Captured base revisions;
+- Actor identity, authority path, configured failure mode, and server-owned commit boundary.
 
-Trackers cannot:
+Trackers can't:
 
-- choose another chat or inactive subject;
-- supply canonical hashes, revisions, writer priority, commit groups, failure boundaries, dependencies, or idempotency keys;
-- commit directly;
-- mutate architecture data through a Runtime/state tracker;
-- call proposal tools before canonical promotion.
+- Choose another chat or inactive subject;
+- Supply canonical hashes, revisions, writer priority, commit groups, failure boundaries, dependencies, or idempotency keys;
+- Commit directly;
+- Mutate architecture data through a Runtime/state tracker;
+- Call proposal tools before canonical promotion.
 
 ## 11. Character Truth Model
 
@@ -411,12 +411,12 @@ The Character Truth Model is a governed roleplay subsystem, not migration shadow
 
 Observations:
 
-- are derived only from canonical evidence plus the character's stable HumanOS architecture and prior committed observations;
-- include confidence, evidence references, observation time, and optional supersession links;
-- are private generation context, not claims exposed automatically in dialogue;
-- may be contradicted or superseded by later canonical evidence without deleting history;
-- must distinguish observed behavior from inferred internal state;
-- cannot rewrite stable character architecture.
+- Are derived only from canonical evidence plus the character's stable HumanOS architecture and prior committed observations;
+- Include confidence, evidence references, observation time, and optional supersession links;
+- Are private generation context, not claims exposed automatically in dialogue;
+- May be contradicted or superseded by later canonical evidence without deleting history;
+- Must distinguish observed behavior from inferred internal state;
+- Can't rewrite stable character architecture.
 
 ### 11.2 Branch hypotheses
 
@@ -424,12 +424,12 @@ Observations:
 
 Hypotheses:
 
-- reference source observation commit IDs and the architecture version used;
-- carry confidence, assumptions, branch conditions, horizon, status, and expiry;
-- are versioned derived projections rather than canonical facts;
-- may guide composition and Narrative Director planning;
-- cannot directly mutate observations, Runtime, relationships, lorebooks, or canonical prose;
-- become historical facts only when later canonical evidence separately authorizes an observation or state commit.
+- Reference source observation commit IDs and the architecture version used;
+- Carry confidence, assumptions, branch conditions, horizon, status, and expiry;
+- Are versioned derived projections rather than canonical facts;
+- May guide composition and Narrative Director planning;
+- Can't directly mutate observations, Runtime, relationships, lorebooks, or canonical prose;
+- Become historical facts only when later canonical evidence separately authorizes an observation or state commit.
 
 This prevents a plausible future from becoming a fake memory merely because a model predicted it with confidence. Private truth tracks what is currently inferred; branch hypotheses track what might believably happen.
 
@@ -441,26 +441,26 @@ Character Truth and relationship progression are stored in a server-managed **Re
 - `characterId`;
 - `personaId`.
 
-The save file loads automatically with its chat and preserves the specific relationship developed between that character and that user persona. A different persona in the same character chat, or the same persona in a different chat, receives a different save identity. Deleting the chat deletes its relationship save through an explicit audited cascade; deleting or editing an individual message does not silently erase established relationship history.
+The save file loads automatically with its chat and preserves the specific relationship developed between that character and that user persona. A different persona in the same character chat, or the same persona in a different chat, receives a different save identity. Deleting the chat deletes its relationship save through an explicit audited cascade. Deleting or editing an individual message doesn't silently erase established relationship history.
 
 The authoritative save consists of ledger commits, milestone records, checkpoint lineage, active truth state, and canonical evidence references. It never mutates character-card architecture or persona-card identity. In v1 it is strictly chat-local. A later continue/import workflow may explicitly fork a save into another chat, preserving source provenance and requiring user confirmation; automatic cross-chat inheritance is forbidden.
 
 ### 11.4 Ten-message checkpoint and semantic classification
 
-After every **10 new canonical messages** since the last successful checkpoint, schedule one derived relationship-summary checkpoint. Only canonical messages count; candidates, rejected drafts, retries, agent diagnostics, and regenerated non-selected swipes do not. The job is idempotent for the covered canonical range and may be retried without creating a second logical checkpoint.
+After every **10 new canonical messages** since the last successful checkpoint, schedule one derived relationship-summary checkpoint. Only canonical messages count; candidates, rejected drafts, retries, agent diagnostics, and regenerated non-selected swipes don't. The job is idempotent for the covered canonical range and may be retried without creating a second logical checkpoint.
 
 Each checkpoint records:
 
-- the covered canonical message range and ordered message/swipe content hashes;
-- the previous checkpoint ID and relationship-save revision;
-- the summary policy/model version and creation reason;
-- the active relationship state and Character Truth token estimate;
-- semantic classifications and source commit IDs;
-- validity or staleness after later canonical edits.
+- The covered canonical message range and ordered message/swipe content hashes;
+- The previous checkpoint ID and relationship-save revision;
+- The summary policy/model version and creation reason;
+- The active relationship state and Character Truth token estimate;
+- Semantic classifications and source commit IDs;
+- Validity or staleness after later canonical edits.
 
 The semantic classifier assigns extracted material to one of three retention classes:
 
-1. `fleeting` — transient mood, tone, momentary expectation, or scene-local cognition that does not materially change the relationship;
+1. `fleeting` — transient mood, tone, momentary expectation, or scene-local cognition that doesn't materially change the relationship;
 2. `currently_relevant` — an unresolved truth, pressure, belief, defense, desire, promise, or conflict that should continue influencing behavior;
 3. `milestone` — a durable turning point that changes the relationship's achieved state or the interpretation of later interactions.
 
@@ -472,13 +472,13 @@ Fleeting observation payloads may be compacted after a verified checkpoint prese
 
 When active Character Truth reaches its configured prompt token budget, schedule semantic compaction. Compaction must:
 
-1. retain all unresolved currently relevant truths needed for believable behavior;
-2. retain milestone identity, meaning, sequence, and evidence provenance;
-3. collapse redundant or fleeting detail into a concise relationship-state projection;
-4. preserve links to source checkpoints and commits;
-5. produce a deterministic, versioned result for the same ordered inputs.
+1. Retain all unresolved currently relevant truths needed for believable behavior;
+2. Retain milestone identity, meaning, sequence, and evidence provenance;
+3. Collapse redundant or fleeting detail into a concise relationship-state projection;
+4. Preserve links to source checkpoints and commits;
+5. Produce a deterministic, versioned result for the same ordered inputs.
 
-The prompt-facing result is a **private, chat-scoped managed lorebook projection** linked to the Relationship Save File. It loads automatically only for the matching chat, character, and persona. It is a rebuildable read model—not the authority—and must never overwrite or merge into a user-authored lorebook, character card, or persona card. If its hash or provenance diverges from the save file, it is marked stale and rebuilt from the latest valid checkpoint plus subsequent commits.
+The prompt-facing result is a **private, chat-scoped managed lorebook projection** linked to the Relationship Save File. It loads automatically only for the matching chat, character, and persona. It's a rebuildable read model—not the authority—and must never overwrite or merge into a user-authored lorebook, character card, or persona card. If its hash or provenance diverges from the save file, it is marked stale and rebuilt from the latest valid checkpoint plus subsequent commits.
 
 The projection should contain the achieved relationship state, permanent milestones, unresolved relevant truths, current relational pressure, and only the minimum private Character Truth required for consistency. Branch hypotheses remain separately labeled speculative context and are never serialized as relationship facts.
 
@@ -519,12 +519,12 @@ Parity verification is temporary migration instrumentation. It is unrelated to p
 
 Exit criteria:
 
-- exact retries replay;
-- conflicting retries fail;
-- stale canonical anchors fail;
-- deterministic ordering is stable under randomized agent completion order;
-- no projection or target-head changes in parity verification mode;
-- parity records cannot be mistaken for authoritative commits.
+- Exact retries replay;
+- Conflicting retries fail;
+- Stale canonical anchors fail;
+- Deterministic ordering is stable under randomized agent completion order;
+- No projection or target-head changes in parity verification mode;
+- Parity records can't be mistaken for authoritative commits.
 
 ### Phase B — Runtime reference migration
 
@@ -534,9 +534,9 @@ Exit criteria:
 
 Exit criteria:
 
-- all existing Runtime tests pass unchanged or through compatibility adapters;
-- no duplicate Runtime commits;
-- replay and stale-write behavior are equivalent.
+- All existing Runtime tests pass unchanged or through compatibility adapters;
+- No duplicate Runtime commits;
+- Replay and stale-write behavior are equivalent.
 
 ### Phase C — Append/snapshot writers
 
@@ -561,137 +561,137 @@ Migrate document/link mutations and whitelisted message metadata. These need the
 
 ### Kernel
 
-- exact proposal/commit replay;
-- idempotency-key collision with different payload;
-- stale target revision;
-- stale message content or selected swipe;
-- rollback of projection, ledger, head, and proposal status on failure;
-- deterministic order under randomized completion timing;
-- required/degradable/optional failure propagation;
-- dependency blocking across target keys;
-- target-head/projection hash mismatch;
-- compensating commit history.
+- Exact proposal/commit replay;
+- Idempotency-key collision with different payload;
+- Stale target revision;
+- Stale message content or selected swipe;
+- Rollback of projection, ledger, head, and proposal status on failure;
+- Deterministic order under randomized completion timing;
+- Required/degradable/optional failure propagation;
+- Dependency blocking across target keys;
+- Target-head/projection hash mismatch;
+- Compensating commit history.
 
 ### Adapter contract suite
 
 Every adapter must pass shared tests for:
 
-- normalization stability;
-- schema rejection of unknown fields;
-- authorization scope;
-- deterministic application;
-- invariant validation;
-- projection hash stability;
-- transaction rollback;
-- replay from ledger or checkpoint.
+- Normalization stability;
+- Schema rejection of unknown fields;
+- Authorization scope;
+- Deterministic application;
+- Invariant validation;
+- Projection hash stability;
+- Transaction rollback;
+- Replay from ledger or checkpoint.
 
 ### Route integration
 
-- rejected candidates create no proposals;
-- recomposed drafts authorize only the promoted final hash;
-- trackers cannot propose before promotion;
-- editing/swiping between proposal and commit fails evidence validation;
-- one turn with multiple trackers produces stable ordering;
-- failed optional targets do not block unrelated required targets;
-- no event or derived job runs before commit success.
+- Rejected candidates create no proposals;
+- Recomposed drafts authorize only the promoted final hash;
+- Trackers can't propose before promotion;
+- Editing/swiping between proposal and commit fails evidence validation;
+- One turn with multiple trackers produces stable ordering;
+- Failed optional targets don't block unrelated required targets;
+- No event or derived job runs before commit success.
 
 ### Relationship Save File and Character Truth
 
-- save identity is isolated by `chatId + characterId + personaId` and never mutates either reusable card;
-- exactly one idempotent checkpoint is created per covered ten-message canonical range;
-- candidate, rejected, retry, diagnostic, and non-selected swipe rows do not advance checkpoint cadence;
-- semantic classification distinguishes fleeting, currently relevant, and milestone material with evidence provenance;
-- fleeting payload compaction preserves replay-safe tombstones and the verified checkpoint that absorbed their relevant effect;
-- currently relevant truths remain active until a governed resolution, supersession, or milestone promotion;
-- milestone payloads, ordering, meaning, and provenance survive routine compaction for the life of the chat;
-- canonical message edits mark affected checkpoint/evidence lineage stale or superseded but never silently erase milestones;
-- managed lorebook projections are private, chat-scoped, token-budget-triggered, deterministic, and rebuildable from authoritative save state;
-- managed projections never overwrite user-authored lorebooks or leak into a different chat, character, or persona;
-- branch hypotheses remain speculative and cannot be serialized as achieved relationship facts;
-- deleting a chat performs an explicit audited cascade of its relationship save and managed projections;
-- any future cross-chat continuation creates a provenance-preserving fork only after explicit user confirmation.
+- Save identity is isolated by `chatId + characterId + personaId` and never mutates either reusable card;
+- Exactly one idempotent checkpoint is created per covered ten-message canonical range;
+- Candidate, rejected, retry, diagnostic, and non-selected swipe rows don't advance checkpoint cadence;
+- Semantic classification distinguishes fleeting, currently relevant, and milestone material with evidence provenance;
+- Fleeting payload compaction preserves replay-safe tombstones and the verified checkpoint that absorbed their relevant effect;
+- Currently relevant truths remain active until a governed resolution, supersession, or milestone promotion;
+- Milestone payloads, ordering, meaning, and provenance survive routine compaction for the life of the chat;
+- Canonical message edits mark affected checkpoint/evidence lineage stale or superseded but never silently erase milestones;
+- Managed lorebook projections are private, chat-scoped, token-budget-triggered, deterministic, and rebuildable from authoritative save state;
+- Managed projections never overwrite user-authored lorebooks or leak into a different chat, character, or persona;
+- Branch hypotheses remain speculative and can't be serialized as achieved relationship facts;
+- Deleting a chat performs an explicit audited cascade of its relationship save and managed projections;
+- Any future cross-chat continuation creates a provenance-preserving fork only after explicit user confirmation.
 
 ### Migration
 
-- legacy and parity-verification projections match on captured fixtures;
-- parity records cannot advance target heads or appear as committed authority;
-- schema migration is additive and restart-safe;
-- downgrade/rollback leaves legacy projections readable;
-- old Runtime history remains queryable.
+- Legacy and parity-verification projections match on captured fixtures;
+- Parity records can't advance target heads or appear as committed authority;
+- Schema migration is additive and restart-safe;
+- Downgrade/rollback leaves legacy projections readable;
+- Old Runtime history remains queryable.
 
 ## 15. Audit and observability
 
 The first UI is audit-first:
 
-- list target, actor, authority path, timestamp, evidence message, operation, base/result revisions, and before/result hashes;
-- distinguish proposed, rejected, blocked, failed, committed, compensated, imported, migrated, and `out_of_scope` records;
-- provide **Revert by compensation**, which asks the adapter for an inverse proposal and validates it against the current revision;
-- require confirmation for destructive or cross-target compensation;
-- never expose delete-history as undo.
+- List target, actor, authority path, timestamp, evidence message, operation, base/result revisions, and before/result hashes;
+- Distinguish proposed, rejected, blocked, failed, committed, compensated, imported, migrated, and `out_of_scope` records;
+- Provide **Revert by compensation**, which asks the adapter for an inverse proposal and validates it against the current revision;
+- Require confirmation for destructive or cross-target compensation;
+- Never expose delete-history as undo.
 
-A graphical per-target/per-character timeline is a planned later UX layer over the same ledger. It must not introduce separate authority semantics.
+A graphical per-target/per-character timeline is a planned later UX layer over the same ledger. It mustn't introduce separate authority semantics.
 
 Structured observability must record:
 
 Record structured diagnostics for:
 
-- proposal accepted/rejected;
-- target, base revision, and result revision;
-- canonical evidence identity, never raw sensitive prose by default;
-- adapter validation failures;
-- commit duration and retries;
-- blocked dependencies;
-- projection/hash corruption;
-- derived jobs scheduled from commit IDs.
+- Proposal accepted/rejected;
+- Target, base revision, and result revision;
+- Canonical evidence identity, never raw sensitive prose by default;
+- Adapter validation failures;
+- Commit duration and retries;
+- Blocked dependencies;
+- Projection/hash corruption;
+- Derived jobs scheduled from commit IDs.
 
-Metrics should distinguish proposal failure from commit failure. Agent-run success must not imply state-commit success.
+Metrics should distinguish proposal failure from commit failure. Agent-run success mustn't imply state-commit success.
 
 ## 16. Initial implementation slice
 
 The first production slice remains deliberately small. Phase A completed the kernel and parity-verification foundation; Phase B now owns the Runtime reference migration:
 
-1. retain the completed generic schemas, proposal storage, authority model, deterministic planner, and parity acceptance suite;
-2. migrate HumanOS Runtime behind the generic authoritative adapter/commit service while preserving compatibility rows and APIs;
-3. prove authoritative revision, hash, idempotency, replay, recovery, and restart equivalence;
-4. do not migrate another authoritative writer until the Phase B parity and compatibility gates pass;
-5. introduce the chat-bound Relationship Save File and Character Truth observation adapter next;
-8. add idempotent ten-message relationship checkpoints and semantic retention classification;
-9. add the private token-budget-triggered managed lorebook projection;
-10. add derived branch hypotheses only after save isolation, milestone retention, and projection rebuild tests pass.
+1. Retain the completed generic schemas, proposal storage, authority model, deterministic planner, and parity acceptance suite;
+2. Migrate HumanOS Runtime behind the generic authoritative adapter/commit service while preserving compatibility rows and APIs;
+3. Prove authoritative revision, hash, idempotency, replay, recovery, and restart equivalence;
+4. Don't migrate another authoritative writer until the Phase B parity and compatibility gates pass;
+5. Introduce the chat-bound Relationship Save File and Character Truth observation adapter next;
+8. Add idempotent ten-message relationship checkpoints and semantic retention classification;
+9. Add the private token-budget-triggered managed lorebook projection;
+10. Add derived branch hypotheses only after save isolation, milestone retention, and projection rebuild tests pass.
 
-This avoids rewriting every state subsystem at once while establishing a real authority kernel. Attempting a simultaneous migration of character truth, lorebooks, summaries, relationships, and memory would be less “architecture” and more “group project conducted during a kitchen fire.”
+This avoids rewriting every state subsystem at once while establishing a real authority kernel. Attempting a simultaneous migration of character truth, lorebooks, summaries, relationships, and memory would be less "architecture" and more "group project conducted during a kitchen fire."
 
 ## 17. Locked decisions and deferred adapter policy
 
 ### Locked before implementation
 
-- one generic authority kernel with typed target adapters;
-- one actor-aware ledger for agent, user, administrator, and system writes;
-- proposal payload and authority identity are immutable after insertion;
-- unresolved proposals compact to replay-preserving `out_of_scope` tombstones at 90 days;
-- per-target revisions and permanent append-only commit history;
-- every committed proposal receives its own consecutive result revision;
-- server-owned evidence, ordering, revisions, commit groups, dependencies, failure boundaries, and idempotency;
-- target-level transactions with explicit cross-target dependency DAGs;
-- reject-on-conflict with no automatic merge in the first production release;
-- authoritative memory/character-truth observations remain distinct from derived consolidation and branch hypotheses;
+- One generic authority kernel with typed target adapters;
+- One actor-aware ledger for agent, user, administrator, and system writes;
+- Proposal payload and authority identity are immutable after insertion;
+- Unresolved proposals compact to replay-preserving `out_of_scope` tombstones at 90 days;
+- Per-target revisions and permanent append-only commit history;
+- Every committed proposal receives its own consecutive result revision;
+- Server-owned evidence, ordering, revisions, commit groups, dependencies, failure boundaries, and idempotency;
+- Target-level transactions with explicit cross-target dependency DAGs;
+- Reject-on-conflict with no automatic merge in the first production release;
+- Authoritative memory/character-truth observations remain distinct from derived consolidation and branch hypotheses;
 - Relationship Save Files are chat-local and keyed by chat, character, and persona; they auto-load without modifying either reusable card;
-- relationship checkpoints run idempotently every 10 canonical messages;
-- semantic retention is classified as `fleeting`, `currently_relevant`, or `milestone`;
-- fleeting payloads may compact after verified semantic preservation, while milestones and provenance remain for the lifetime of the chat;
+- Relationship checkpoints run idempotently every 10 canonical messages;
+- Semantic retention is classified as `fleeting`, `currently_relevant`, or `milestone`;
+- Fleeting payloads may compact after verified semantic preservation, while milestones and provenance remain for the lifetime of the chat;
 - Character Truth token-budget pressure creates a private, chat-scoped, rebuildable managed lorebook projection;
-- summaries and relationship checkpoints are derived but versioned;
-- compensation is append-only and audit-first, with a graphical timeline planned later;
-- canonical evidence edits never auto-revert committed state;
-- parity verification records are migration diagnostics, never authoritative state;
-- game/session adapters are outside this project's roadmap;
-- projection tables remain optimized read models;
-- operational and UI-only state stays out by default.
+- Summaries and relationship checkpoints are derived but versioned;
+- Compensation is append-only and audit-first, with a graphical timeline planned later;
+- Canonical evidence edits never auto-revert committed state;
+- Parity verification records are migration diagnostics, never authoritative state;
+- Game/session adapters are outside this project's roadmap;
+- Projection tables remain optimized read models;
+- Operational and UI-only state stays out by default.
 
 ### Deferred until the relevant adapter
 
-- storage-specific cold-tier mechanics and operational payload-size limits; the semantic retention policy itself is locked;
-- detailed target-key decomposition for roleplay world facts;
-- rebuild cost limits for ten-message relationship checkpoints and managed lorebook projections; the cadence itself is locked;
-- graphical timeline interaction design;
-- adapter-specific merge proposals after reject-on-conflict has production evidence.
+- Storage-specific cold-tier mechanics and operational payload-size limits; the semantic retention policy itself is locked;
+- Detailed target-key decomposition for roleplay world facts;
+- Rebuild cost limits for ten-message relationship checkpoints and managed lorebook projections; the cadence itself is locked;
+- Graphical timeline interaction design;
+- Adapter-specific merge proposals after reject-on-conflict has production evidence.

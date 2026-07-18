@@ -12,22 +12,22 @@ The goal was to remove live SQLite and database migrations from the user-facing 
 
 The storage backend is selected in `packages/server/src/config/runtime-config.ts`. The default is `files`. You can read the resolved value from `getStorageBackend()`, and `isFileStorageBackend()` returns true unless the backend is `sqlite`.
 
-Because file storage is the default, a normal install never runs database migrations at startup. In `packages/server/src/app.ts`, `runMigrations(db)` runs only when `isFileStorageBackend()` is false. Contributors do not need to run `pnpm db:push`, `pnpm db:migrate`, or any other database command for a file-storage install.
+Because file storage is the default, a normal install never runs database migrations at startup. In `packages/server/src/app.ts`, `runMigrations(db)` runs only when `isFileStorageBackend()` is false. Contributors don't need to run `pnpm db:push`, `pnpm db:migrate`, or any other database command for a file-storage install.
 
 ## What happens on startup
 
 The startup logic lives in `FileTableStore.initialize()` in `packages/server/src/db/file-backed-store.ts`. It decides between four paths, in this order.
 
 1. If `storage/manifest.json` exists, Marinara loads the JSON table files into the in-memory store. It then runs a legacy repair check (see below).
-2. If there is no manifest but a legacy `marinara-engine.db` exists, Marinara imports every persisted table from that database one time. It then writes the full `storage` directory.
-3. If there is no manifest and no legacy database, but a `storage/tables/` directory exists, Marinara loads the existing JSON files.
+2. If there's no manifest but a legacy `marinara-engine.db` exists, Marinara imports every persisted table from that database one time. It then writes the full `storage` directory.
+3. If there's no manifest and no legacy database, but a `storage/tables/` directory exists, Marinara loads the existing JSON files.
 4. If none of the above exist, the store starts empty.
 
 The one-time import reads every domain table, including Conversation, Roleplay, Game, agents, lorebooks, prompts, connections, galleries, memories, and settings. After import, new writes autosave back to JSON files. The old `.db` file is left in place as a recovery artifact and is never deleted. The import only reads from the old database and never writes to it. (Only the `node:sqlite` fallback reader opens the file with an explicit read-only flag.)
 
 ### Legacy repair after a partial import
 
-Even after the manifest is written, the legacy database can still sit next to the file store. If it does, `repairLegacyImportIfNeeded()` runs on the next startup and checks whether the recorded repair is complete. If it is not, Marinara re-reads the legacy database. It back-fills any rows whose primary keys are missing from the file store. This protects against a first import that was interrupted before it finished. A completed repair is recorded in the manifest so the back-fill does not repeat every startup.
+Even after the manifest is written, the legacy database can still sit next to the file store. If it does, `repairLegacyImportIfNeeded()` runs on the next startup and checks whether the recorded repair is complete. If it isn't, Marinara re-reads the legacy database. It back-fills any rows whose primary keys are missing from the file store. This protects against a first import that was interrupted before it finished. A completed repair is recorded in the manifest so the back-fill doesn't repeat every startup.
 
 ## The storage layout on disk
 
@@ -56,13 +56,13 @@ This table-snapshot layout is deliberately flat. A later cleanup can split large
 - `migratedFromSqlite`: the legacy database path or paths and the import timestamp, present only after a one-time import.
 - `legacyRepair`: the repair timestamp, the reader used, and per-table repair counts. The initial import also writes this block as a completion marker, with empty per-table counts. Counts become non-zero only when a later repair pass back-fills rows.
 
-The manifest can be rebuilt from the on-disk table files, so a corrupted manifest does not block startup. Marinara falls back to `manifest.json.bak`, then to an empty manifest, and rewrites a fresh one on the next save.
+The manifest can be rebuilt from the on-disk table files, so a corrupted manifest doesn't block startup. Marinara falls back to `manifest.json.bak`, then to an empty manifest, and rewrites a fresh one on the next save.
 
 ## Autosave and durability
 
 The store never writes on every mutation. Instead `markDirty()` records which tables changed and schedules a debounced flush. The relevant timings in `file-backed-store.ts` are:
 
-- A debounced save about 750 milliseconds after the first write that marks the store dirty. The timer is set once and is not extended by later writes in the same window.
+- A debounced save about 750 milliseconds after the first write that marks the store dirty. The timer is set once and isn't extended by later writes in the same window.
 - A safety save on a 10 second interval.
 - A final flush on process `beforeExit` and on `closeDB()`.
 
@@ -70,7 +70,7 @@ Only dirty tables are rewritten. Backups include the whole `storage` directory, 
 
 ## The persisted tables
 
-The authoritative list is `FILE_BACKED_TABLES` in `packages/server/src/db/file-backed-store.ts`. Do not hardcode a table count in prose, because the list grows as features are added. New releases add files under `storage/tables/` without changing the shape. The table below reflects the current list.
+The authoritative list is `FILE_BACKED_TABLES` in `packages/server/src/db/file-backed-store.ts`. Don't hardcode a table count in prose, because the list grows as features are added. New releases add files under `storage/tables/` without changing the shape. The table below reflects the current list.
 
 | Table | Durable file | Domain |
 | --- | --- | --- |
@@ -132,7 +132,7 @@ The authoritative list is `FILE_BACKED_TABLES` in `packages/server/src/db/file-b
 | `prompt_overrides` | `storage/tables/prompt_overrides.json` | Built-in prompt override templates |
 | `installed_extensions` | `storage/tables/installed_extensions.json` | Cross-device installed extension storage |
 
-When you add a new table, remember that a file-native install needs it registered in `FILE_BACKED_TABLES` in addition to the schema. A table missing from that list is not persisted.
+When you add a new table, remember that a file-native install needs it registered in `FILE_BACKED_TABLES` in addition to the schema. A table missing from that list isn't persisted.
 
 ## Legacy SQLite readers
 
@@ -141,7 +141,7 @@ The one-time import needs to read the old database without shipping a full SQLit
 1. The bundled libSQL client is tried first. This is the default reader.
 2. If libSQL is unavailable, the built-in `node:sqlite` module is used as a fallback.
 
-The reader that succeeded is recorded in the manifest under `legacyRepair.reader`. You can force the libSQL reader off with the environment variable `MARINARA_DISABLE_LIBSQL_LEGACY_READER=true`. This is useful when debugging the fallback path. New installs do not bundle the older native or WASM SQLite packages.
+The reader that succeeded is recorded in the manifest under `legacyRepair.reader`. You can force the libSQL reader off with the environment variable `MARINARA_DISABLE_LIBSQL_LEGACY_READER=true`. This is useful when debugging the fallback path. New installs don't bundle the older native or WASM SQLite packages.
 
 ## Opting back into the legacy SQLite backend
 
@@ -152,7 +152,7 @@ STORAGE_BACKEND=sqlite
 DATABASE_DRIVER=libsql
 ```
 
-Only the `libsql` driver is supported. Any other `DATABASE_DRIVER` value throws at startup in `packages/server/src/db/connection.ts`, because the older drivers are no longer bundled. When the backend is `sqlite`, Marinara opens the database file and runs the SQLite migration step through `runMigrations()`. It does not use the file-native store.
+Only the `libsql` driver is supported. Any other `DATABASE_DRIVER` value throws at startup in `packages/server/src/db/connection.ts`, because the older drivers are no longer bundled. When the backend is `sqlite`, Marinara opens the database file and runs the SQLite migration step through `runMigrations()`. It doesn't use the file-native store.
 
 ## Related environment variables
 

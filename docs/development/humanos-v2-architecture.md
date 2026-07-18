@@ -8,10 +8,10 @@ HumanOS v2 is Marinara Engine's architecture for behaviorally coherent character
 
 HumanOS v2 does four jobs:
 
-1. store a private architecture for an active `CHARACTER` or `USER_PERSONA`
-2. maintain a committed runtime snapshot for the current chat
-3. sequence deterministic HumanOS agents by dependency wave
-4. publish only after ordered review and canonical-turn checks pass
+1. Store a private architecture for an active `CHARACTER` or `USER_PERSONA`
+2. Maintain a committed runtime snapshot for the current chat
+3. Sequence deterministic HumanOS agents by dependency wave
+4. Publish only after ordered review and canonical-turn checks pass
 
 The implementation is split across the private architecture storage, runtime storage, dependency planner, ordered review policy, and server-owned tool callbacks.
 
@@ -37,14 +37,14 @@ Keeping them separate prevents the app from overwriting a reusable character wit
 
 ### Character vs world
 
-World truth is not a character property. If the setting changes, the character should react to it rather than become it. That keeps the same person usable in different worlds and modes.
+World truth isn't a character property. If the setting changes, the character should react to it rather than become it. That keeps the same person usable in different worlds and modes.
 
 ### Character vs persona
 
-Characters are people in the story. Personas are the user's identity in the chat. Marinara stores both as first-class subjects, but they are not interchangeable:
+Characters are people in the story. Personas are the user's identity in the chat. Marinara stores both as first-class subjects, but they aren't interchangeable:
 
-- a character is the person the AI interacts with
-- a persona is the user-controlled identity the AI addresses as "you"
+- A character is the person the AI interacts with
+- A persona is the user-controlled identity the AI addresses as "you"
 
 That distinction is reflected in the subject types accepted by the HumanOS API and tools: `CHARACTER` and `USER_PERSONA`.
 
@@ -52,7 +52,7 @@ That distinction is reflected in the subject types accepted by the HumanOS API a
 
 Runtime is mutable. It captures what is true now in the active chat and can be committed after canonical evidence is available.
 
-Character architecture is durable. It should not be rewritten every time the scene changes. Runtime commit is therefore gated by the server-selected canonical assistant message and swipe, plus a fingerprinted turn snapshot.
+Character architecture is durable. It shouldn't be rewritten every time the scene changes. Runtime commit is therefore gated by the server-selected canonical assistant message and swipe, plus a fingerprinted turn snapshot.
 
 The runtime surface is also allowed to act as a narrative generator surface. In that mode it should produce a one-page story projection, not a raw state dump. On the character page it can seed a runtime arc from character truth and scenario context. On the persona page it stays locked until a character is linked, then blends character truth, persona truth, runtime truth, relationship-framework interpretation, and relationship-save state into a reusable arc overview. The default path is canon-fit first; ALT is the canon-compatible alternate arc, and BRANCH is the deliberate hard-divergence arc.
 
@@ -64,13 +64,13 @@ HumanOS models behavior as something that emerges from stable architecture plus 
 
 In practice, the architecture gives the system places to store:
 
-- values and priorities
-- wounds and defenses
-- relational expectations
-- relationship type and trust strands
-- speech style
-- growth and regression tendencies
-- current pressure and recent state
+- Values and priorities
+- Wounds and defenses
+- Relational expectations
+- Relationship type and trust strands
+- Speech style
+- Growth and regression tendencies
+- Current pressure and recent state
 
 That is why the docs for character and persona work should talk about psychology, not just appearance or biography. The model needs the internal mechanics that make a person readable under stress.
 
@@ -91,29 +91,29 @@ HumanOS uses a few linked modules that work together:
 
 These pieces are intentionally linked by authority:
 
-1. the route layer exposes read and write entry points
-2. the tool runtime verifies the active subject before allowing edits
-3. the turn snapshot records the evidence boundary for a generation turn
-4. the runtime storage layer commits only against canonical evidence
-5. the publication policy blocks unsupported or incomplete reviewer configurations
+1. The route layer exposes read and write entry points
+2. The tool runtime verifies the active subject before allowing edits
+3. The turn snapshot records the evidence boundary for a generation turn
+4. The runtime storage layer commits only against canonical evidence
+5. The publication policy blocks unsupported or incomplete reviewer configurations
 
 ## Flow on effect
 
 The architecture affects how Marinara behaves end to end:
 
-- persona and character content can be refined without mutating runtime state
-- runtime state can be committed without overwriting reusable architecture
-- relationship type can guide projection without becoming a universal numeric gate
-- deterministic agents can depend on earlier agent outputs without forming cycles
-- publication can be held back when review is incomplete or a canonical anchor is missing
-- docs for characters, personas, and lorebooks can describe the right layer instead of forcing everything into card fields
+- Persona and character content can be refined without mutating runtime state
+- Runtime state can be committed without overwriting reusable architecture
+- Relationship type can guide projection without becoming a universal numeric gate
+- Deterministic agents can depend on earlier agent outputs without forming cycles
+- Publication can be held back when review is incomplete or a canonical anchor is missing
+- Docs for characters, personas, and lorebooks can describe the right layer instead of forcing everything into card fields
 
 This reduces accidental bleed between:
 
-- reusable identity
-- scenario-specific premise
-- live chat state
-- private authoring notes
+- Reusable identity
+- Scenario-specific premise
+- Live chat state
+- Private authoring notes
 
 ## Operational boundaries
 
